@@ -1,0 +1,36 @@
+export default class Constants {
+  public static USER_NOT_FOUND = 'user_not_found';
+  public static USER_ALREADY_EXISTS = 'user_already_exists';
+  public static LOGIN_TEMPORARILY_LOCKED = 'login_temporarily_locked';
+  public static OBJECT_NOT_FOUND = 'object_not_found';
+  public static INCORRECT_OLD_PASSWORD = 'incorrect_old_password';
+  public static USER_NOT_MATCHED_POLICY = 'user_not_matched_policy';
+  public static PASS_NOT_MATCHED_POLICY = 'pass_not_matched_policy';
+  public static NAME_NOT_MATCHED_POLICY = 'name_not_matched_policy';
+  public static USER_INFO_REQUIRED = 'user_info_required';
+  public static INVALID_CLIENT_CREDENTIAL = 'invalid_client_credential';
+  public static PASSWORD_HAS_NOT_BEEN_CHANGED = 'password_has_not_been_changed';
+  public static CHANGED_PASSWORD_SUCCESSFULL = 'changed_password_successful';
+  public static CHANGED_PASSWORD_FAIL = 'changed_password_fail';
+  public static RESET_PASSWORD_SUCCESSFULL = 'reset_password_successful';
+  public static RESET_PASSWORD_FAIL = 'reset_password_fail';
+  public static REGISTER_SUCCESSFUL = 'register_successful';
+  public static REGISTER_FAIL = 'register_fail';
+  public static INTERNAL_ERROR = 'INTERNAL_ERROR';
+  public static INVALID_ACCOUNT_STATUS = 'invalid_account_status';
+  public static INVALID_OTP_KEY = 'invalid_otp_key';
+  public static OTP_KEY_EXPIRED = 'otp_key_expired';
+  public static REGISTER_INPROGESS = 'register_validate_inprogess';
+  public static INPROGESS = 'inprogess';
+  public static UPDATE_INPROGESS = 'update_inprogess';
+  public static DISABLE_INPROGESS = 'disable_inprogess';
+  public static UPDATE_USER_INFO_SUCCESSFULL = 'UPDATE_USER_INFO_SUCCESSFULL';
+  public static UPDATE_USER_INFO_FAIL = 'update_user_info_fail';
+  public static INVALID_SOCIAL_TOKEN = 'invalid_social_token';
+  public static EMAIL_EXISTED_NOT_SOCIAL_ACCOUNT = 'email_existed_not_social_account';
+  public static SOCIAL_ACCOUNT_IS_ALREADY_REGISTERED = 'social_account_is_already_registered';
+  public static SOCIAL_ACCOUNT_IS_LOGINED_FAILED = 'social_account_is_logined_failed';
+  public static REDIS_KEY_USER_INFO = 'cache_userinfo';
+  public static REJECT_FAIL = 'reject_fail';
+  public static ALREADY_EXISTS = 'already_exists';
+}
