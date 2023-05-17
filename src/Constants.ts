@@ -16,7 +16,6 @@ export default class Constants {
   public static RESET_PASSWORD_FAIL = 'reset_password_fail';
   public static REGISTER_SUCCESSFUL = 'register_successful';
   public static REGISTER_FAIL = 'register_fail';
-  public static INTERNAL_ERROR = 'INTERNAL_ERROR';
   public static INVALID_ACCOUNT_STATUS = 'invalid_account_status';
   public static INVALID_OTP_KEY = 'invalid_otp_key';
   public static OTP_KEY_EXPIRED = 'otp_key_expired';
