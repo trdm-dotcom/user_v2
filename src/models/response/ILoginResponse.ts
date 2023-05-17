@@ -5,4 +5,5 @@ export interface ILoginResponse {
     username?: string;
     isVerified?: boolean;
     status?: UserStatus;
+    name?: string;
 }

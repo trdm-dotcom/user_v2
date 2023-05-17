@@ -40,7 +40,7 @@ export default class AuthenticationService {
     Utils.validate(request.password, 'password').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    const user = await this.findAndValidUser(request);
+    const user: User = await this.findAndValidUser(request);
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
       : request.password;
@@ -53,6 +53,7 @@ export default class AuthenticationService {
       username: user.username,
       status: user.status,
       isVerified: user.verified,
+      name: user.name,
     };
     return response;
   }
