@@ -48,10 +48,11 @@ let config = {
     poolSize: 10,
   },
   app: {
-    lifeTime: 34560,
+    cacheTTL: 300000,
+    lifeTime: 86400000, //milliseconds
     encryptPassword: true,
     loginTemporarilyLocked: 5, // times
-    loginTemporarilyLockedTime: 1800, //seconds
+    loginTemporarilyLockedTime: 1800000, //milliseconds
     timeStampHash: 30000, // milliseconds
   },
   key: {
@@ -60,6 +61,7 @@ let config = {
       privateKey: './../external/key/jwt_private.key',
     },
     rsa: {
+      enableEncryptPassword: true,
       publicKey: './../external/key/rsa_public.key',
       privateKey: './../external/key/rsa_private.key',
     },
@@ -80,6 +82,7 @@ let config = {
     secret: '',
     infoUrl: '',
     profileUrl: '',
+    avatarUrl: '',
   },
 };
 

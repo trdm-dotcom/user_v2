@@ -13,8 +13,6 @@ export default class User {
   password: string;
   @Column({ name: 'phone_number' })
   phoneNumber: string;
-  @Column({ name: 'email' })
-  email: string;
   @Column({ name: 'phone_verified' })
   phoneVerified: boolean;
   @Column({ name: 'verified' })

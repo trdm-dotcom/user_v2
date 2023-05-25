@@ -28,7 +28,9 @@ export default class FriendService {
     invalidParams.throwErr();
     utils.validHash(request.hash, 'REQUEST_FRIEND');
     try {
-      while (await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS)) {
+      while (
+        await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)
+      ) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       const user: User = await this.userRepository.findOneBy({
@@ -45,18 +47,22 @@ export default class FriendService {
         })
         .getMany();
       if (friends && friends.length > 0) {
-        throw new Error(Constants.ALREADY_EXISTS);
+        throw new Errors.GeneralError(Constants.ALREADY_EXISTS);
       }
       const friend: Friend = new Friend();
       friend.sourceId = userId;
       friend.targetId = user.id;
       friend.status = FriendStatus.PENDING;
-      AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(friend);
       });
-    } catch (err) {
-      throw new Errors.GeneralError(err.message);
+    } catch (error) {
+      if (error instanceof Errors.GeneralError) {
+        throw error;
+      }
+      throw new Errors.GeneralError();
     }
+    return {};
   }
 
   public async acceptFriend(request: IFriendRequest, transactionId: string | number) {
@@ -67,7 +73,7 @@ export default class FriendService {
     utils.validHash(request.hash, 'ACCEPT_FRIEND');
     const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
     friend.status = FriendStatus.FRIENDED;
-    AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+    await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.save(friend);
     });
   }
@@ -79,7 +85,7 @@ export default class FriendService {
     invalidParams.throwErr();
     utils.validHash(request.hash, 'ACCEPT_FRIEND');
     const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
-    AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+    await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(Friend, friend.id);
     });
   }
@@ -93,7 +99,9 @@ export default class FriendService {
     invalidParams.throwErr();
     utils.validHash(request.hash, 'ACCEPT_FRIEND');
     try {
-      while (await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS)) {
+      while (
+        await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)
+      ) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       const user: User = await this.userRepository.findOneBy({
@@ -110,17 +118,20 @@ export default class FriendService {
         })
         .getCount();
       if (result > 0) {
-        throw new Error(Constants.ALREADY_EXISTS);
+        throw new Errors.GeneralError(Constants.ALREADY_EXISTS);
       }
       const friend: Friend = new Friend();
       friend.sourceId = userId;
       friend.targetId = user.id;
       friend.status = FriendStatus.FRIENDED;
-      AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(friend);
       });
-    } catch (err) {
-      throw new Errors.GeneralError(err.message);
+    } catch (error) {
+      if (error instanceof Errors.GeneralError) {
+        throw error;
+      }
+      throw new Errors.GeneralError();
     }
     return {};
   }

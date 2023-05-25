@@ -1,4 +1,4 @@
 export enum SocialType {
-    FACEBOOK = 'FACEBOOK',
-    GOOGLE = 'GOOGLE'
+  FACEBOOK = 'FACEBOOK',
+  GOOGLE = 'GOOGLE',
 }

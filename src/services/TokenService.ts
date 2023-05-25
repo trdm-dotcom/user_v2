@@ -15,11 +15,11 @@ export default class TokenService {
   @Inject()
   private cacheService: CacheService;
 
-  public async validateOtpKey(token: string) {
+  public async validateOtpKey(token: string, transactionId: string | number) {
     let key: Buffer = getKey(config.key.jwt.privateKey);
     try {
       let clams = await jwt.verify(token, key, { algorithms: 'RS256' });
-      let otp: Otp = await this.cacheService.findOtpKey(clams.id);
+      let otp: Otp = await this.cacheService.findOtpKey(clams.id, transactionId);
       if (
         !otp ||
         !Object.values(OtpTxType).includes(clams.txType) ||
@@ -29,6 +29,9 @@ export default class TokenService {
       }
       return clams;
     } catch (error) {
+      if (error instanceof Errors.GeneralError) {
+        throw error;
+      }
       switch (error.message) {
         case 'jwt expired':
           throw new Errors.GeneralError(Constants.OTP_KEY_EXPIRED);

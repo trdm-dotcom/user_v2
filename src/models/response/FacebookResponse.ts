@@ -29,8 +29,15 @@ export default class FacebookResponse {
   @JsonProperty()
   private profileUrl: string;
 
+  @JsonProperty()
+  private avatar: string;
+
   public setProfileUrl(profileUrl: string) {
     this.profileUrl = profileUrl;
+  }
+
+  public setAvatar(avatar: string){
+    this.avatar = avatar;
   }
 
   public getId() {
@@ -67,5 +74,9 @@ export default class FacebookResponse {
 
   public getGender() {
     return this.gender;
+  }
+
+  public getAvatar() {
+    return this.avatar;
   }
 }

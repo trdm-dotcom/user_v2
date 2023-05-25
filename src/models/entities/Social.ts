@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { SocialType } from '../enum/SocialType';
 
 @Entity()
 export default class Social {
@@ -7,7 +8,7 @@ export default class Social {
   @Column({ name: 'user_id' })
   userid: number;
   @Column({ name: 'socical_type' })
-  socicalType: string;
+  socicalType: SocialType;
   @Column({ name: 'socical_id' })
   socicalId: string;
   @Column({ name: 'profile_url' })

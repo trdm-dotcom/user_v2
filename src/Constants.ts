@@ -7,13 +7,11 @@ export default class Constants {
   public static USER_NOT_MATCHED_POLICY = 'user_not_matched_policy';
   public static PASS_NOT_MATCHED_POLICY = 'pass_not_matched_policy';
   public static NAME_NOT_MATCHED_POLICY = 'name_not_matched_policy';
-  public static USER_INFO_REQUIRED = 'user_info_required';
   public static INVALID_CLIENT_CREDENTIAL = 'invalid_client_credential';
   public static PASSWORD_HAS_NOT_BEEN_CHANGED = 'password_has_not_been_changed';
   public static CHANGED_PASSWORD_SUCCESSFULL = 'changed_password_successful';
   public static CHANGED_PASSWORD_FAIL = 'changed_password_fail';
   public static RESET_PASSWORD_SUCCESSFULL = 'reset_password_successful';
-  public static RESET_PASSWORD_FAIL = 'reset_password_fail';
   public static REGISTER_SUCCESSFUL = 'register_successful';
   public static REGISTER_FAIL = 'register_fail';
   public static INVALID_ACCOUNT_STATUS = 'invalid_account_status';
@@ -23,13 +21,20 @@ export default class Constants {
   public static INPROGESS = 'inprogess';
   public static UPDATE_INPROGESS = 'update_inprogess';
   public static DISABLE_INPROGESS = 'disable_inprogess';
+  public static SOCIAL_INPROGESS = 'social_inprogess';
   public static UPDATE_USER_INFO_SUCCESSFULL = 'UPDATE_USER_INFO_SUCCESSFULL';
   public static UPDATE_USER_INFO_FAIL = 'update_user_info_fail';
   public static INVALID_SOCIAL_TOKEN = 'invalid_social_token';
-  public static EMAIL_EXISTED_NOT_SOCIAL_ACCOUNT = 'email_existed_not_social_account';
   public static SOCIAL_ACCOUNT_IS_ALREADY_REGISTERED = 'social_account_is_already_registered';
-  public static SOCIAL_ACCOUNT_IS_LOGINED_FAILED = 'social_account_is_logined_failed';
   public static REDIS_KEY_USER_INFO = 'cache_userinfo';
-  public static REJECT_FAIL = 'reject_fail';
   public static ALREADY_EXISTS = 'already_exists';
+  public static INVALID_USER = 'invalid_user';
+  public static BIOMETRIC_PUBLIC_KEY_EXISTED = 'login_biometric_public_key_existed';
+  public static BIOMETRIC_CHANGE_DEVICE = 'hủy do user đổi device';
+  public static BIOMETRIC_CHANGE_PASS = 'hủy do user đổi password';
+  public static BIOMETRIC_CANCEL = 'hủy do user';
+  public static BIOMETRIC_OTP_VERIFY = 'huỷ do user không xác thực OTP';
+  public static INCORRECT_PASSWORD = 'incorrect_password';
+  public static BIOMETRIC_NOT_FOUND = 'login_biometric_not_found';
+  public static BIOMETRIC_VERIFY_FAILED = 'login_biometric_signature_verification_failed';
 }

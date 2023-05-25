@@ -1,7 +1,6 @@
-import { SocialType } from "../enum/SocialType";
+import { SocialType } from '../enum/SocialType';
 
-export interface ISocialLoginRequest{
-    username: string;
-    socialToken: string;
-    socialType: SocialType;
+export interface ISocialLoginRequest {
+  socialToken?: string;
+  socialType?: SocialType;
 }
