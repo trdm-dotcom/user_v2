@@ -178,7 +178,7 @@ export default class AuthenticationService {
     const newPassword: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.newPassword, config.key.rsa.privateKey)
       : request.newPassword;
-    if (newPassword != oldPassword) {
+    if (newPassword == oldPassword) {
       throw new Errors.GeneralError(Constants.PASSWORD_HAS_NOT_BEEN_CHANGED);
     }
     if (!this.PASSWORD_REGEX.test(newPassword)) {
@@ -246,7 +246,7 @@ export default class AuthenticationService {
       if (user == null) {
         throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
-      if (!(await this.comparePassword(newPassword, user.password))) {
+      if (await this.comparePassword(newPassword, user.password)) {
         throw new Errors.GeneralError(Constants.PASSWORD_HAS_NOT_BEEN_CHANGED);
       }
       user.password = await this.hashPassword(newPassword);
