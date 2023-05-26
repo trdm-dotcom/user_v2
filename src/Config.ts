@@ -20,9 +20,7 @@ let config = {
     },
   },
   topic: {
-    notification: 'notification',
-    userinfo: 'user-info',
-    syncRedisMysql: 'sync-redis-mysql',
+    pushNotification: 'notification-manager',
   },
   clusterId: 'user',
   clientId: `user-${nodeId}`,

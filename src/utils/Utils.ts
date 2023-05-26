@@ -121,23 +121,16 @@ export function sendMessagePushNotification(
   condition: string,
   token: string
 ) {
-  const objectMapper: ObjectMapper = new ObjectMapper();
-  let notificationMessage: NotificationMessage = new NotificationMessage();
-  notificationMessage.setMethod(MethodEnum.FIREBASE);
-  let firebaseConfiguration: FirebaseConfiguration = new FirebaseConfiguration();
-  firebaseConfiguration.setType(type);
-  firebaseConfiguration.setToken(token);
-  firebaseConfiguration.setCondition(condition);
-  firebaseConfiguration.setNotification({
+  Kafka.getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
+    userId: userId,
     title: title,
+    content: content,
+    template: template,
+    isSave: isSave,
+    type: type,
+    condition: condition,
+    token: token,
   });
-  firebaseConfiguration.setData({ click_action: 'FLUTTER_NOTIFICATION_CLICK' });
-  let data: string = content;
-  let templateMap: Map<string, Object> = new Map<string, Object>([[template, data]]);
-  notificationMessage.setConfiguration(firebaseConfiguration, objectMapper);
-  notificationMessage.setTemplate(templateMap);
-
-  Kafka.getInstance().sendMessage(msgId.toString(), config.topic.notification, '', notificationMessage);
 }
 
 export function validHash(hash: string, type: string) {
