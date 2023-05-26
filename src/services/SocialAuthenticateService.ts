@@ -32,7 +32,9 @@ export default class SocialAuthenticateService {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.socialToken, 'socialToken').setRequire().throwValid(invalidParams);
     Utils.validate(request.socialType, 'socialType').setRequire().throwValid(invalidParams);
+    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'LOGIN');
     switch (request.socialType) {
       case SocialType.FACEBOOK:
         return await this.facebook(request.socialToken, transactionId);
@@ -42,8 +44,10 @@ export default class SocialAuthenticateService {
   }
 
   private async facebook(socialToken: string, transactionId: string | number) {
+    var infoId: string = null;
     try {
       const info: FacebookResponse = await this.facebookService.queryFacebookInfo(socialToken, transactionId);
+      infoId = info.getId();
       while (this.cacheService.findInprogessValidate(info.getId(), Constants.SOCIAL_INPROGESS, transactionId)) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
@@ -92,19 +96,26 @@ export default class SocialAuthenticateService {
           name: user.name,
         };
       });
-      this.cacheService.removeInprogessValidate(info.getId(), Constants.UPDATE_INPROGESS, transactionId);
       return response;
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
+    } finally {
+      if (infoId != null) {
+        this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
+      }
     }
   }
 
   private async google(socialToken: string, transactionId: string | number) {
+    var infoId: string = null;
     try {
       const info: GoogleResponse = await this.googleService.queryGoogleInfo(socialToken, transactionId);
+      infoId = info.getId();
       while (this.cacheService.findInprogessValidate(info.getId(), Constants.SOCIAL_INPROGESS, transactionId)) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
@@ -150,13 +161,18 @@ export default class SocialAuthenticateService {
           name: user.name,
         };
       });
-      this.cacheService.removeInprogessValidate(info.getId(), Constants.UPDATE_INPROGESS, transactionId);
       return response;
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
+    } finally {
+      if (infoId != null) {
+        this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
+      }
     }
   }
 

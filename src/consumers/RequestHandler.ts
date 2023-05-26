@@ -32,7 +32,7 @@ export default class RequestHandler {
   }
 
   private handleRequest: Kafka.Handle = async (message: Kafka.IMessage) => {
-    Logger.info('Endpoint received message: ', message);
+    Logger.info(`Endpoint received message: ${JSON.stringify(message)}`);
     if (message == null || message.data == null) {
       return Promise.reject(new Errors.SystemError());
     } else {

@@ -40,6 +40,7 @@ export default class AuthenticationService {
     Utils.validate(request.password, 'password').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'LOGIN');
     const user: User = await this.findAndValidUser(request, transactionId);
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
@@ -47,7 +48,6 @@ export default class AuthenticationService {
     if (!(await this.comparePassword(password, user.password))) {
       throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
     }
-    utils.validHash(request.hash, 'LOGIN');
     const response: ILoginResponse = {
       id: user.id,
       username: user.username,
@@ -65,6 +65,7 @@ export default class AuthenticationService {
     Utils.validate(request.otpKey, 'otpKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'REGISTER');
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
       : request.password;
@@ -77,7 +78,6 @@ export default class AuthenticationService {
     if (!this.FULLNAME_REGEX.test(request.name)) {
       throw new Errors.GeneralError(Constants.NAME_NOT_MATCHED_POLICY);
     }
-    utils.validHash(request.hash, 'REGISTER');
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
     try {
       if (
@@ -100,12 +100,15 @@ export default class AuthenticationService {
         await transactionalEntityManager.save(user);
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
-      this.cacheService.removeInprogessValidate(request.username, Constants.REGISTER_INPROGESS, transactionId);
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(request.username, Constants.REGISTER_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.REGISTER_SUCCESSFUL,
@@ -132,6 +135,7 @@ export default class AuthenticationService {
       loginValid.lastRequest = now;
       this.cacheService.addLoginValidate(loginValid, transactionId);
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         if ((error as any).code != Constants.OBJECT_NOT_FOUND) {
           throw error;
@@ -142,8 +146,9 @@ export default class AuthenticationService {
           lastRequest: now,
         };
         this.cacheService.addLoginValidate(loginValid, transactionId);
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
     }
     if (user == null) {
       throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
@@ -166,6 +171,7 @@ export default class AuthenticationService {
     Utils.validate(request.otpKey, 'otpKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'PASSWORD');
     const oldPassword: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.oldPassword, config.key.rsa.privateKey)
       : request.oldPassword;
@@ -178,7 +184,6 @@ export default class AuthenticationService {
     if (!this.PASSWORD_REGEX.test(newPassword)) {
       throw new Errors.GeneralError(Constants.PASS_NOT_MATCHED_POLICY);
     }
-    utils.validHash(request.hash, 'PASSWORD');
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
     try {
       while (await this.cacheService.findInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId)) {
@@ -197,13 +202,15 @@ export default class AuthenticationService {
         await transactionalEntityManager.save(user);
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
-      this.cacheService.removeInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
     } catch (error) {
-      Logger.error('change password error', error);
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.CHANGED_PASSWORD_SUCCESSFULL,
@@ -218,13 +225,13 @@ export default class AuthenticationService {
     Utils.validate(request.otpKey, 'otpKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'PASSWORD');
     const newPassword: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.newPassword, config.key.rsa.privateKey)
       : request.newPassword;
     if (!this.PASSWORD_REGEX.test(newPassword)) {
       throw new Errors.GeneralError(Constants.PASS_NOT_MATCHED_POLICY);
     }
-    utils.validHash(request.hash, 'PASSWORD');
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
     try {
       while (
@@ -247,13 +254,15 @@ export default class AuthenticationService {
         await transactionalEntityManager.save(user);
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
-      this.cacheService.removeInprogessValidate(request.username, Constants.UPDATE_INPROGESS, transactionId);
     } catch (error) {
-      Logger.error('reset password error', error);
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(request.username, Constants.UPDATE_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.RESET_PASSWORD_SUCCESSFULL,

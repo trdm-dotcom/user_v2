@@ -7,8 +7,7 @@ import config from '../Config';
 import Constants from '../Constants';
 import { Otp } from '../models/redis/Otp';
 import { OtpTxType } from '../models/enum/OtpTxType';
-import { Errors } from 'common';
-import { OtpIdType } from '../models/enum/OtpIdType';
+import { Errors, Logger } from 'common';
 
 @Service()
 export default class TokenService {
@@ -20,15 +19,13 @@ export default class TokenService {
     try {
       let clams = await jwt.verify(token, key, { algorithms: 'RS256' });
       let otp: Otp = await this.cacheService.findOtpKey(clams.id, transactionId);
-      if (
-        !otp ||
-        !Object.values(OtpTxType).includes(clams.txType) ||
-        !Object.values(OtpIdType).includes(clams.idType)
-      ) {
+      Logger.warn(`otp ${JSON.stringify(otp)}`);
+      if (!otp || !Object.values(OtpTxType).includes(clams.txType)) {
         throw new Errors.GeneralError(Constants.INVALID_OTP_KEY);
       }
       return clams;
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
       }

@@ -14,6 +14,7 @@ import ICancelBiometricRegister from '../models/request/ICancelBiometricRegister
 import AuthenticationService from './AuthenticationService';
 import { ILoginRequest } from '../models/request/ILoginRequest';
 import { ILoginResponse } from '../models/response/ILoginResponse';
+import * as utils from '../utils/Utils';
 
 @Service()
 export default class BiometricService {
@@ -26,7 +27,9 @@ export default class BiometricService {
     Utils.validate(request.publicKey, 'publicKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.secretKey, 'secretKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.deviceId, 'deviceId').setRequire().throwValid(invalidParams);
+    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'BIOMETRIC');
     await this.registerBiometricValidation(request.headers.token.userData.username, request.publicKey, transactionId);
     const biometric = await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       const biometric: Biometric = new Biometric();
@@ -65,7 +68,9 @@ export default class BiometricService {
   public async cancelBiometricRegister(request: ICancelBiometricRegister, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.deviceId, 'deviceId').setRequire().throwValid(invalidParams);
+    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'BIOMETRIC');
     const biometrics: Biometric[] = await this.findBiometricByUsernameAndDeviceId(
       request.headers.token.userData.username,
       false,
@@ -82,7 +87,9 @@ export default class BiometricService {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.signatureValue, 'signatureValue').setRequire().throwValid(invalidParams);
     Utils.validate(request.username, 'username').setRequire().throwValid(invalidParams);
+    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    utils.validHash(request.hash, 'LOGIN');
     let publicKey = `-----BEGIN PUBLIC KEY-----\n{key}\n-----END PUBLIC KEY-----`;
     const verify = crypto.createVerify('RSA-SHA256');
     const biometrics: Biometric[] = await this.findBiometricByUsernameAndDeviceId(

@@ -40,6 +40,9 @@ export default class FriendService {
       if (user == null) {
         throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
+      if (user.username == request.headers.token.userData.username) {
+        throw new Errors.GeneralError(Constants.INVALID_USER);
+      }
       const friends: Friend[] = await this.friendRepository
         .createQueryBuilder('friend')
         .where("CONCAT(friend.sourceId, '_', friend.targetId) in (:concatid)", {
@@ -57,10 +60,12 @@ export default class FriendService {
         await transactionalEntityManager.save(friend);
       });
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
     }
     return {};
   }
@@ -71,11 +76,18 @@ export default class FriendService {
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     utils.validHash(request.hash, 'ACCEPT_FRIEND');
-    const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
+    const friend: Friend = await this.friendRepository.findOneBy({
+      id: request.friend as number,
+      status: FriendStatus.PENDING,
+    });
+    if (friend == null) {
+      throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
+    }
     friend.status = FriendStatus.FRIENDED;
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.save(friend);
     });
+    return {};
   }
 
   public async rejectFriend(request: IFriendRequest, transactionId: string | number) {
@@ -83,11 +95,15 @@ export default class FriendService {
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    utils.validHash(request.hash, 'ACCEPT_FRIEND');
+    utils.validHash(request.hash, 'REJECT_FRIEND');
     const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
+    if (friend == null) {
+      throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
+    }
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(Friend, friend.id);
     });
+    return {};
   }
 
   public async requestAndAcceptFriend(request: IFriendRequest, transactionId: string | number) {
@@ -111,6 +127,9 @@ export default class FriendService {
       if (user == null) {
         throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
+      if (user.username == request.headers.token.userData.username) {
+        throw new Errors.GeneralError(Constants.INVALID_USER);
+      }
       const result: number = await this.friendRepository
         .createQueryBuilder('friend')
         .where("CONCAT(friend.sourceId, '_', friend.targetId) in (:concatid)", {
@@ -128,10 +147,12 @@ export default class FriendService {
         await transactionalEntityManager.save(friend);
       });
     } catch (error) {
+      Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
     }
     return {};
   }

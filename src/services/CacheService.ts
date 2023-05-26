@@ -37,8 +37,9 @@ export default class CacheService {
     } catch (error) {
       if (error instanceof Errors.GeneralError) {
         throw error;
+      } else {
+        throw new Errors.GeneralError();
       }
-      throw new Errors.GeneralError();
     }
   }
 

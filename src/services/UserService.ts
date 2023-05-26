@@ -18,8 +18,8 @@ import IDeleteUserResponse from '../models/response/IDeleteUserResponse';
 import * as bcrypt from 'bcrypt';
 import IUserConfirmRequest from '../models/request/IUserConfirmRequest';
 import { UserStatus } from '../models/enum/UserStatus';
-import { randomBytes } from 'crypto';
 import IUserRequest from '../models/request/IUserRequest';
+import { v4 as uuid } from 'uuid';
 
 @Service()
 export default class UserService {
@@ -60,12 +60,13 @@ export default class UserService {
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(user);
       });
-      this.cacheService.removeInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
     } catch (error) {
       if (error instanceof Errors.GeneralError) {
         throw error;
       }
       throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.UPDATE_USER_INFO_SUCCESSFULL,
@@ -103,6 +104,7 @@ export default class UserService {
       };
       return response;
     } catch (error) {
+      Logger.error('Error:', error);
       if (error instanceof Errors.GeneralError) {
         throw error;
       }
@@ -124,28 +126,29 @@ export default class UserService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       this.cacheService.addInprogessValidate(username, Constants.DISABLE_INPROGESS, transactionId);
-      const user: User = await this.userRepository.findOne({
-        where: {
-          id: userId,
-          status: UserStatus.ACTIVE,
-        },
+      const user: User = await this.userRepository.findOneBy({
+        id: userId,
+        status: UserStatus.ACTIVE,
       });
       if (user == null) {
-        throw new Error(Constants.USER_NOT_FOUND);
+        throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
-      user.username = randomBytes(20).toString('utf-8');
+      user.username = uuid();
       user.status = UserStatus.INACTIVE;
+      user.phoneNumber = uuid();
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(user);
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
       this.sendMessageDeleteAccount(username);
-      this.cacheService.removeInprogessValidate(username, Constants.DISABLE_INPROGESS, transactionId);
     } catch (error) {
+      Logger.error('Error:', error);
       if (error instanceof Errors.GeneralError) {
         throw error;
       }
       throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(username, Constants.DISABLE_INPROGESS, transactionId);
     }
     return {};
   }

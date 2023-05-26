@@ -150,13 +150,7 @@ export function validHash(hash: string, type: string) {
   ) {
     throw new Errors.GeneralError('INVALID_HASH');
   }
-  Logger.info('test check point', mapHashObject);
-  if (
-    moment.duration(moment().diff(moment(Number(mapHashObject.get('timeStamp'))))).asMilliseconds() <
-    config.app.timeStampHash
-  ) {
-    throw new Errors.GeneralError('TO_FAST');
-  }
+  Logger.info('object hash', mapHashObject);
 }
 
 export function randomAlphabetic(length: number): string {

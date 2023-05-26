@@ -1,5 +1,6 @@
-import { IDataRequest } from "common/build/src/modules/models";
+import { IDataRequest } from 'common/build/src/modules/models';
 
 export default interface ICancelBiometricRegister extends IDataRequest {
-  deviceId: string
+  deviceId?: string;
+  hash?: string;
 }
