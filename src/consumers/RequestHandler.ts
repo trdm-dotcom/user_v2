@@ -1,4 +1,5 @@
-import { Errors, Kafka, Logger } from 'common';
+import { Errors, Logger } from 'common';
+import { Kafka } from 'kafka-common';
 import { Inject, Service } from 'typedi';
 import config from '../Config';
 import AuthenticationService from '../services/AuthenticationService';
@@ -6,6 +7,8 @@ import UserService from '../services/UserService';
 import FriendService from '../services/FriendService';
 import BiometricService from '../services/BiometricService';
 import SocialAuthenticateService from '../services/SocialAuthenticateService';
+import { getInstance } from '../services/KafkaProducerService';
+import { MessageSetEntry } from 'kafka-common/build/src/modules/kafka';
 
 @Service()
 export default class RequestHandler {
@@ -21,13 +24,9 @@ export default class RequestHandler {
   private socialAuthenticateService: SocialAuthenticateService;
 
   public init() {
-    const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(Kafka.getInstance());
-    Kafka.createConsumer(
-      config,
-      config.kafkaConsumerOptions,
-      config.requestHandlerTopics,
-      (message: Kafka.IKafkaMessage) => handle.handle(message, this.handleRequest),
-      config.kafkaTopicOptions
+    const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(getInstance());
+    new Kafka.KafkaConsumer(config).startConsumer([config.clusterId], (message: MessageSetEntry) =>
+      handle.handle(message, this.handleRequest)
     );
   }
 

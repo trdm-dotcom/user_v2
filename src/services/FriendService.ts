@@ -10,7 +10,7 @@ import CacheService from './CacheService';
 import Constants from '../Constants';
 import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
-import { IDataRequest } from 'common/build/src/modules/models';
+import { FirebaseType, IDataRequest } from 'common/build/src/modules/models';
 import IFriendResponse from '../models/response/IFriendResponse';
 
 @Service()
@@ -59,6 +59,16 @@ export default class FriendService {
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(friend);
       });
+      utils.sendMessagePushNotification(
+        transactionId.toString(),
+        friend.targetId,
+        'request friend',
+        `${request.headers.token.userData} sent you a friend request`,
+        'push_up',
+        true,
+        FirebaseType.CONDITION,
+        `${friend.targetId}`
+      );
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -87,6 +97,16 @@ export default class FriendService {
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.save(friend);
     });
+    utils.sendMessagePushNotification(
+      transactionId.toString(),
+      friend.sourceId,
+      'accepted request',
+      `${request.headers.token.userData.id} accepted your friend request`,
+      'push_up',
+      true,
+      FirebaseType.CONDITION,
+      `${friend.sourceId}`
+    );
     return {};
   }
 
@@ -146,6 +166,16 @@ export default class FriendService {
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(friend);
       });
+      utils.sendMessagePushNotification(
+        transactionId.toString(),
+        friend.sourceId,
+        'accepted request',
+        `${request.headers.token.userData.id} accepted your friend request`,
+        'push_up',
+        true,
+        FirebaseType.CONDITION,
+        `${friend.sourceId}`
+      );
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {

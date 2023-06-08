@@ -19,7 +19,7 @@ export default class CacheService {
     let realKey: string = `${LOGIN_VALIDATE}_${loginValid.username}_${Utils.formatDateToDisplay(
       Utils.addTime(new Date(), 7, 'h')
     )}`;
-    this.redisService.set(realKey, loginValid, { EX: config.app.lifeTime });
+    this.redisService.set(realKey, loginValid, { PX: config.app.lifeTime });
   }
 
   public async findLoginValidate(username: string, transactionId: string | number): Promise<ILoginValid> {
@@ -48,7 +48,7 @@ export default class CacheService {
     let realKey: string = `${LOGIN_VALIDATE}_${username}_${Utils.formatDateToDisplay(
       Utils.addTime(new Date(), 7, 'h')
     )}`;
-    this.redisService.set(realKey, '', { PX: 1 });
+    this.redisService.set(realKey, '', { PX: -1 });
   }
 
   public async findOtpKey(key: string, transactionId: string | number): Promise<Otp> {
@@ -61,7 +61,7 @@ export default class CacheService {
     Logger.info(`${transactionId} remote OtpKey Validate ${key}`);
     if (key) {
       let realKey: string = `${OTP_KEY_STORAGE}_${key}`;
-      this.redisService.set(realKey, '', { PX: 1 });
+      this.redisService.set(realKey, '', { PX: -1 });
     }
   }
 
@@ -74,12 +74,12 @@ export default class CacheService {
   public addInprogessValidate(key: any, type: string, transactionId: string | number) {
     Logger.info(`${transactionId} add inprogess type ${type} key ${key}`);
     let realKey: string = `${type}_${key}`;
-    this.redisService.set(realKey, key, { EX: config.app.cacheTTL });
+    this.redisService.set(realKey, key, { PX: config.app.cacheTTL });
   }
 
   public removeInprogessValidate(key: any, type: string, transactionId: string | number) {
     Logger.info(`${transactionId} remove inprogess type ${type} key ${key}`);
     let realKey: string = `${type}_${key}`;
-    this.redisService.set(realKey, '', { PX: 1 });
+    this.redisService.set(realKey, '', { PX: -1 });
   }
 }

@@ -46,7 +46,7 @@ let config = {
     poolSize: 10,
   },
   app: {
-    cacheTTL: 300000,
+    cacheTTL: 300000, //milliseconds
     lifeTime: 86400000, //milliseconds
     encryptPassword: true,
     loginTemporarilyLocked: 5, // times
@@ -70,8 +70,8 @@ let config = {
     },
   },
   google: {
-    id: '',
-    secret: '',
+    id: '41547290544-umgsh2m6m4913ucjpfbta6b9ei6gufv2.apps.googleusercontent.com',
+    secret: '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',
     infoUrl: '',
     profileUrl: '',
   },

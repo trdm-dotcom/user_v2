@@ -1,15 +1,15 @@
 import { readFileSync } from 'fs';
 import { privateDecrypt, publicEncrypt } from 'crypto';
-import { Errors, FirebaseConfiguration, FirebaseType, Kafka, Logger, MethodEnum, NotificationMessage } from 'common';
+import { Errors, Models, Logger } from 'common';
 import config from '../Config';
 import * as jwt from 'jsonwebtoken';
 import { AES, enc, pad, mode } from 'crypto-js';
 import Constants from '../Constants';
-import { ObjectMapper } from 'jackson-js';
 import { OtpIdType } from '../models/enum/OtpIdType';
 import { OtpTxType } from '../models/enum/OtpTxType';
 import { IVerifyOtpKeyRequest } from '../models/request/IVerifyOtpKeyRequest';
 import * as moment from 'moment';
+import { getInstance } from '../services/KafkaProducerService';
 
 const MULTI_ENCRYPTION_PART_PREFIX = 'mutipart';
 
@@ -117,11 +117,11 @@ export function sendMessagePushNotification(
   content: string,
   template: string,
   isSave: boolean,
-  type: FirebaseType,
-  condition: string,
-  token: string
+  type: Models.FirebaseType,
+  condition?: string,
+  token?: string
 ) {
-  Kafka.getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
+  getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
     userId: userId,
     title: title,
     content: content,
