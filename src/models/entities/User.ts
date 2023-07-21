@@ -15,8 +15,6 @@ export default class User {
   phoneNumber: string;
   @Column({ name: 'phone_verified' })
   phoneVerified: boolean;
-  @Column({ name: 'verified' })
-  verified: boolean;
   @Column({
     name: 'status',
     type: 'enum',

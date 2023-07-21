@@ -17,22 +17,13 @@ import IFriendResponse from '../models/response/IFriendResponse';
 export default class FriendService {
   private userRepository: Repository<User> = AppDataSource.getRepository(User);
   private friendRepository: Repository<Friend> = AppDataSource.getRepository(Friend);
-  @Inject()
-  private cacheService: CacheService;
 
   public async requestFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
-    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    utils.validHash(request.hash, 'REQUEST_FRIEND');
     try {
-      while (
-        await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)
-      ) {
-        Logger.warn(`${transactionId} waiting do progess`);
-      }
       const user: User = await this.userRepository.findOneBy({
         username: request.friend as string,
         status: UserStatus.ACTIVE,
@@ -83,9 +74,7 @@ export default class FriendService {
   public async acceptFriend(request: IFriendRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
-    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    utils.validHash(request.hash, 'ACCEPT_FRIEND');
     const friend: Friend = await this.friendRepository.findOneBy({
       id: request.friend as number,
       status: FriendStatus.PENDING,
@@ -113,9 +102,7 @@ export default class FriendService {
   public async rejectFriend(request: IFriendRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
-    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    utils.validHash(request.hash, 'REJECT_FRIEND');
     const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
     if (friend == null) {
       throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
@@ -123,67 +110,6 @@ export default class FriendService {
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
       await transactionalEntityManager.delete(Friend, friend.id);
     });
-    return {};
-  }
-
-  public async requestAndAcceptFriend(request: IFriendRequest, transactionId: string | number) {
-    let userId: number = request.headers.token.userData.id;
-    Logger.info(`${transactionId} request friend and accept user ${userId} to ${request.friend}`);
-    let invalidParams = new Errors.InvalidParameterError();
-    Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
-    Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
-    invalidParams.throwErr();
-    utils.validHash(request.hash, 'ACCEPT_FRIEND');
-    try {
-      while (
-        await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)
-      ) {
-        Logger.warn(`${transactionId} waiting do progess`);
-      }
-      const user: User = await this.userRepository.findOneBy({
-        username: request.friend as string,
-        status: UserStatus.ACTIVE,
-      });
-      if (user == null) {
-        throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
-      }
-      if (user.username == request.headers.token.userData.username) {
-        throw new Errors.GeneralError(Constants.INVALID_USER);
-      }
-      const result: number = await this.friendRepository
-        .createQueryBuilder('friend')
-        .where("CONCAT(friend.sourceId, '_', friend.targetId) in (:concatid)", {
-          concatid: [`${userId}_${user.id}`, `${user.id}_${userId}`],
-        })
-        .getCount();
-      if (result > 0) {
-        throw new Errors.GeneralError(Constants.ALREADY_EXISTS);
-      }
-      const friend: Friend = new Friend();
-      friend.sourceId = userId;
-      friend.targetId = user.id;
-      friend.status = FriendStatus.FRIENDED;
-      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        await transactionalEntityManager.save(friend);
-      });
-      utils.sendMessagePushNotification(
-        transactionId.toString(),
-        friend.sourceId,
-        'accepted request',
-        `${request.headers.token.userData.id} accepted your friend request`,
-        'push_up',
-        true,
-        FirebaseType.CONDITION,
-        `${friend.sourceId}`
-      );
-    } catch (error) {
-      Logger.error(`${transactionId} Error:`, error);
-      if (error instanceof Errors.GeneralError) {
-        throw error;
-      } else {
-        throw new Errors.GeneralError();
-      }
-    }
     return {};
   }
 

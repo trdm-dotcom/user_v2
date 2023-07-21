@@ -8,7 +8,6 @@ import FriendService from '../services/FriendService';
 import BiometricService from '../services/BiometricService';
 import SocialAuthenticateService from '../services/SocialAuthenticateService';
 import { getInstance } from '../services/KafkaProducerService';
-import { MessageSetEntry } from 'kafka-common/build/src/modules/kafka';
 
 @Service()
 export default class RequestHandler {
@@ -25,7 +24,7 @@ export default class RequestHandler {
 
   public init() {
     const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(getInstance());
-    new Kafka.KafkaConsumer(config).startConsumer([config.clusterId], (message: MessageSetEntry) =>
+    new Kafka.KafkaConsumer(config).startConsumer([config.clusterId], (message: Kafka.MessageSetEntry) =>
       handle.handle(message, this.handleRequest)
     );
   }
@@ -83,9 +82,6 @@ export default class RequestHandler {
 
         case 'get:/api/v1/user/friend':
           return await this.friendService.getFriend(message.data, message.transactionId);
-
-        case 'post:/api/v1/user/friend/request':
-          return await this.friendService.requestAndAcceptFriend(message.data, message.transactionId);
 
         case 'get:/api/v1/user/friend/request':
           return await this.friendService.getRequestFriend(message.data, message.transactionId);

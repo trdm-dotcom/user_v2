@@ -143,7 +143,6 @@ export function validHash(hash: string, type: string) {
   ) {
     throw new Errors.GeneralError('INVALID_HASH');
   }
-  Logger.info('object hash', mapHashObject);
 }
 
 export function randomAlphabetic(length: number): string {

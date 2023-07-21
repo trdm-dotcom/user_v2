@@ -20,5 +20,4 @@ async function run() {
 
 run().catch((error) => {
   Logger.error(error);
-  process.exit(1);
 });

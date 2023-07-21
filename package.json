@@ -6,7 +6,7 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "run-local": "node build/src/index.js",
-    "start": "npm run build && node build/src/index.js",
+    "build-local": "npm run build && node build/src/index.js",
     "build": "tsc -p tsconfig.json"
   },
   "keywords": [],

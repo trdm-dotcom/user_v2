@@ -35,7 +35,6 @@ export default class UserService {
     const response: IUserInfoResponse = {
       name: user.name,
       username: user.username,
-      isVerified: user.verified,
       status: user.status,
       deviceToken: user.deviceToken,
       phoneNumber: user.phoneNumber,

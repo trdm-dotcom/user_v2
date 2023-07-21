@@ -52,7 +52,6 @@ export default class AuthenticationService {
       id: user.id,
       username: user.username,
       status: user.status,
-      isVerified: user.verified,
       name: user.name,
     };
     return response;
