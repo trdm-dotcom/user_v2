@@ -28,7 +28,7 @@ export default class CacheService {
       Utils.addTime(new Date(), 7, 'h')
     )}`;
     try {
-      const loginValid: ILoginValid = await this.redisService.get<ILoginValid>(realKey);
+      const loginValid: ILoginValid = (await this.redisService.get(realKey)) as ILoginValid;
       if (loginValid) {
         return loginValid;
       } else {
@@ -48,27 +48,27 @@ export default class CacheService {
     let realKey: string = `${LOGIN_VALIDATE}_${username}_${Utils.formatDateToDisplay(
       Utils.addTime(new Date(), 7, 'h')
     )}`;
-    this.redisService.set(realKey, '', { PX: -1 });
+    this.redisService.del(realKey);
   }
 
   public async findOtpKey(key: string, transactionId: string | number): Promise<Otp> {
     Logger.info(`${transactionId} find OtpKey Validate ${key}`);
     let realKey: string = `${OTP_KEY_STORAGE}_${key}`;
-    return await this.redisService.get<any>(realKey);
+    return await this.redisService.get(realKey);
   }
 
   public async removeOtpKey(key: string, transactionId: string | number) {
     Logger.info(`${transactionId} remote OtpKey Validate ${key}`);
     if (key) {
       let realKey: string = `${OTP_KEY_STORAGE}_${key}`;
-      this.redisService.set(realKey, '', { PX: -1 });
+      this.redisService.del(realKey);
     }
   }
 
   public async findInprogessValidate(key: any, type: string, transactionId: string | number) {
     Logger.info(`${transactionId} find inprogess type ${type} key ${key}`);
     let realKey: string = `${type}_${key}`;
-    return await this.redisService.get<any>(realKey);
+    return await this.redisService.get(realKey);
   }
 
   public addInprogessValidate(key: any, type: string, transactionId: string | number) {
@@ -80,6 +80,6 @@ export default class CacheService {
   public removeInprogessValidate(key: any, type: string, transactionId: string | number) {
     Logger.info(`${transactionId} remove inprogess type ${type} key ${key}`);
     let realKey: string = `${type}_${key}`;
-    this.redisService.set(realKey, '', { PX: -1 });
+    this.redisService.del(realKey);
   }
 }

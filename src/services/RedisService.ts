@@ -13,12 +13,6 @@ const DATA_TYPE = {
   OBJECT: '4',
 };
 
-export const REDIS_KEY = {
-  OTP_STOGE: 'otp_stoge',
-  OTP_VALIDATE: 'otp_validate',
-  OTP_KEY_STOGE: 'otp_stoge',
-};
-
 @Service()
 export default class RedisService {
   private client: RedisClientType;
@@ -35,7 +29,22 @@ export default class RedisService {
     });
   }
 
-  public set<T>(key: string, value: T, option?: any): void {
+  public set<T>(key: string, value: T, option?: any) {
+    return new Promise((resolve, reject) => {
+      this.client
+        .set(key, this.formatDataRedis(value), option)
+        .then((result: string) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  private formatDataRedis<T>(value: T): string {
     let valueAsString: string = null;
     if (typeof value == undefined) {
       valueAsString = `${DATA_TYPE.UNDEFINED}${value}`;
@@ -54,11 +63,36 @@ export default class RedisService {
     } else {
       valueAsString = `${DATA_TYPE.OBJECT}${JSON.stringify(value)}`;
     }
-
-    this.client.set(key, valueAsString, option);
+    return valueAsString;
   }
 
-  public receiver(key: string, value: string): any {
+  private convertBackFormatDataRedis<T>(data: string): any {
+    const type: string = data[0];
+    let content: string = null;
+    switch (type) {
+      case DATA_TYPE.UNDEFINED:
+        return undefined;
+      case DATA_TYPE.NULL:
+        return null;
+      case DATA_TYPE.DATE:
+        content = data.substring(1);
+        return new Date(Number(content)) as unknown as T;
+      case DATA_TYPE.BOOLEAN:
+        content = data.substring(1);
+        return (content == '1') as unknown as T;
+      case DATA_TYPE.NUMBER:
+        content = data.substring(1);
+        return content as unknown as T;
+      case DATA_TYPE.STRING:
+        content = data.substring(1);
+        return content as unknown as T;
+      default:
+        content = data.substring(1);
+        return JSON.parse(content, this.receiver);
+    }
+  }
+
+  private receiver(key: string, value: string): any {
     const dateFormat = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
     if (typeof value == 'string' && dateFormat.test(value)) {
       return new Date(value);
@@ -66,34 +100,33 @@ export default class RedisService {
     return value;
   }
 
-  public async get<T>(key: string): Promise<T> {
-    const data = await this.client.get(key);
-    if (data == null) {
-      return null;
-    } else {
-      const type: string = data[0];
-      let content: string = null;
-      switch (type) {
-        case DATA_TYPE.UNDEFINED:
-          return undefined;
-        case DATA_TYPE.NULL:
-          return null;
-        case DATA_TYPE.DATE:
-          content = data.substring(1);
-          return new Date(Number(content)) as unknown as T;
-        case DATA_TYPE.BOOLEAN:
-          content = data.substring(1);
-          return (content == '1') as unknown as T;
-        case DATA_TYPE.NUMBER:
-          content = data.substring(1);
-          return content as unknown as T;
-        case DATA_TYPE.STRING:
-          content = data.substring(1);
-          return content as unknown as T;
-        default:
-          content = data.substring(1);
-          return JSON.parse(content, this.receiver);
-      }
-    }
+  public get(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .get(key)
+        .then((result: string) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(this.convertBackFormatDataRedis(result));
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public del(key: string) {
+    return new Promise((resolve, reject) => {
+      this.client
+        .del(key)
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
   }
 }

@@ -278,12 +278,10 @@ export default class AuthenticationService {
     if (user != null) {
       response = {
         isExist: true,
-        isVerified: user.verified,
       };
     } else {
       response = {
-        isExist: false,
-        isVerified: false,
+        isExist: false
       };
     }
     return response;

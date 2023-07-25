@@ -1,4 +1,4 @@
-import { Inject, Service } from 'typedi';
+import { Service } from 'typedi';
 import Friend from '../models/entities/Friend';
 import { Repository } from 'typeorm';
 import User from '../models/entities/User';
@@ -6,7 +6,6 @@ import { AppDataSource } from '../Connection';
 import IFriendRequest from '../models/request/IFriendRequest';
 import { Errors, Logger, Utils } from 'common';
 import * as utils from '../utils/Utils';
-import CacheService from './CacheService';
 import Constants from '../Constants';
 import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
