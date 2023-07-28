@@ -20,6 +20,7 @@ import IUserConfirmRequest from '../models/request/IUserConfirmRequest';
 import { UserStatus } from '../models/enum/UserStatus';
 import IUserRequest from '../models/request/IUserRequest';
 import { v4 as uuid } from 'uuid';
+import RedisService from './RedisService';
 
 @Service()
 export default class UserService {
@@ -27,6 +28,8 @@ export default class UserService {
   private cacheService: CacheService;
   @Inject()
   private tokenService: TokenService;
+  @Inject()
+  private redisService: RedisService;
   private userRepository: Repository<User> = AppDataSource.getRepository(User);
 
   public async getUserInfo(request: IUserInfoRequest, transactionId: string | number) {
@@ -136,7 +139,20 @@ export default class UserService {
       user.status = UserStatus.INACTIVE;
       user.phoneNumber = uuid();
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        await transactionalEntityManager.save(user);
+        const friends: number[] = (await this.redisService.smembers(`user:${userId}:friends`)) as number[];
+        await Promise.all([
+          transactionalEntityManager.save(user),
+          this.redisService.del(`user:${userId}:friends`),
+          this.redisService.del(`user:${userId}:rooms`),
+          ...friends.map((friendId) => [
+            this.redisService.srem(`user:${friendId}:friends`, userId),
+            this.redisService.srem(
+              `user:${friendId}:rooms`,
+              `room:${Math.min(friendId, userId)}:${Math.max(friendId, userId)}`
+            ),
+            this.redisService.del(`room:${Math.min(friendId, userId)}:${Math.max(friendId, userId)}`),
+          ]),
+        ]);
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
       this.sendMessageDeleteAccount(username);

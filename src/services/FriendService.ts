@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Inject, Service } from 'typedi';
 import Friend from '../models/entities/Friend';
 import { Repository } from 'typeorm';
 import User from '../models/entities/User';
@@ -11,9 +11,12 @@ import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
 import { FirebaseType, IDataRequest } from 'common/build/src/modules/models';
 import IFriendResponse from '../models/response/IFriendResponse';
+import RedisService from './RedisService';
 
 @Service()
 export default class FriendService {
+  @Inject()
+  private redisService: RedisService;
   private userRepository: Repository<User> = AppDataSource.getRepository(User);
   private friendRepository: Repository<Friend> = AppDataSource.getRepository(Friend);
 
@@ -83,7 +86,11 @@ export default class FriendService {
     }
     friend.status = FriendStatus.FRIENDED;
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.save(friend);
+      await Promise.all([
+        transactionalEntityManager.save(friend),
+        this.redisService.sadd(`user:${friend.sourceId}:friends`, friend.targetId),
+        this.redisService.sadd(`user:${friend.targetId}:friends`, friend.sourceId),
+      ]);
     });
     utils.sendMessagePushNotification(
       transactionId.toString(),
@@ -107,7 +114,22 @@ export default class FriendService {
       throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
     }
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-      await transactionalEntityManager.delete(Friend, friend.id);
+      await Promise.all([
+        transactionalEntityManager.delete(Friend, friend.id),
+        this.redisService.srem(`user:${friend.sourceId}:friends`, friend.targetId),
+        this.redisService.srem(`user:${friend.targetId}:friends`, friend.sourceId),
+        this.redisService.del(
+          `room:${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
+        ),
+        this.redisService.srem(
+          `user:${friend.sourceId}:rooms`,
+          `${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
+        ),
+        this.redisService.srem(
+          `user:${friend.targetId}:rooms`,
+          `${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
+        ),
+      ]);
     });
     return {};
   }

@@ -13,6 +13,10 @@ const DATA_TYPE = {
   OBJECT: '4',
 };
 
+interface HashData {
+  [key: string]: string;
+}
+
 @Service()
 export default class RedisService {
   private client: RedisClientType;
@@ -113,6 +117,219 @@ export default class RedisService {
         })
         .catch((error: any) => reject(error));
     });
+  }
+
+  // Redis INCR command is used to increment the integer value of a key by one
+  public incr(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .incr(key)
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  // Redis DECR command is used to decrement the integer value of a key by one
+  public decr(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .decr(key)
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public hmset<T>(key: string, values: { [field: string]: T }): void {
+    Promise.all(
+      Object.entries(values).map(([field, value]) => this.client.hSet(key, field, this.formatDataRedis(value)))
+    );
+  }
+
+  public exists(key: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .exists(key)
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public hexists(key: string, field: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .hExists(key, field)
+        .then((result: boolean) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public hgetall(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .hGetAll(key)
+        .then((results: HashData) => {
+          if (results == null) {
+            resolve(null);
+          } else {
+            resolve(
+              Object.entries(results).reduce((result, [key, value]) => {
+                result[key] = this.convertBackFormatDataRedis(value);
+                return result;
+              }, {})
+            );
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public zrangebyscore(key: string, min: number, max: number): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .zRangeByScore(key, min, max)
+        .then((results: string[]) => {
+          if (results == null) {
+            resolve(null);
+          } else {
+            resolve(results.map((element: string) => this.convertBackFormatDataRedis(element)));
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  // Redis ZADD command adds all the specified members with the specified scores to the sorted set stored at the key
+  public zadd<T>(key: string, score: number, value: T, option?: any) {
+    return new Promise((resolve, reject) => {
+      this.client
+        .zAdd(key, { score: score, value: this.formatDataRedis(value) }, option)
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  // Redis SADD command is used to add members to a set stored at the key
+  public sadd<T>(key: string, value: T) {
+    return new Promise((resolve, reject) => {
+      this.client
+        .sAdd(key, this.formatDataRedis(value))
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public hmget(key: string, fields: string | string[]): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .hmGet(key, fields)
+        .then((results: string[]) => {
+          if (results == null) {
+            resolve(null);
+          } else {
+            resolve(results.map((element: string) => this.convertBackFormatDataRedis(element)));
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  // Redis SISMEMBER returns an element that already exists in the set stored at the key or not.
+  // 1, if the element is a member of the set.
+  // 0, if the element is not a member of the set, or if the key does not exist.
+  public sismember<T>(key: string, member: T): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .sIsMember(key, this.formatDataRedis(member))
+        .then((result: boolean) => resolve(result))
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  // Redis SMEMBERS returns, all the elements exists in set stored at specified key.
+  public smembers(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .sMembers(key)
+        .then((results: string[]) => {
+          if (results == null) {
+            resolve(null);
+          } else {
+            resolve(results.map((element: string) => this.convertBackFormatDataRedis(element)));
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  //Redis SREM command is used to remove the specified member from the set stored at the key.
+  public srem<T>(key: string, member: T) {
+    return new Promise((resolve, reject) => {
+      this.client
+        .sRem(key, this.formatDataRedis(member))
+        .then((result: number) => {
+          if (result == null) {
+            resolve(null);
+          } else {
+            resolve(result);
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public zrange(key: string, start: number, end: number): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client
+        .zRange(key, start, end)
+        .then((results: string[]) => {
+          if (results == null) {
+            resolve(null);
+          } else {
+            resolve(results.map((element: string) => this.convertBackFormatDataRedis(element)));
+          }
+        })
+        .catch((error: any) => reject(error));
+    });
+  }
+
+  public publish<T>(channel: string, data: T) {
+    this.client.publish(channel, this.formatDataRedis(data));
   }
 
   public del(key: string) {

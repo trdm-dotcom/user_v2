@@ -20,6 +20,7 @@ import IChangePasswordRequest from '../models/request/IChangePasswordRequest';
 import IResetPasswordRequest from '../models/request/IResetPasswordRequest';
 import ICheckExistRequest from '../models/request/ICheckExistRequest';
 import ICheckExistResponse from '../models/response/ICheckExistResponse';
+import RedisService from './RedisService';
 
 @Service()
 export default class AuthenticationService {
@@ -27,6 +28,8 @@ export default class AuthenticationService {
   private cacheService: CacheService;
   @Inject()
   private tokenService: TokenService;
+  @Inject()
+  private redisService: RedisService;
   private PASSWORD_REGEX = new RegExp('^(?<!\\.)(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[\\W,_])[.!-~]{6,}$(?<!\\.)');
   private USERNAME_REGEX = new RegExp('^(?<!\\.)\\d{10}$(?<!\\.)');
   private FULLNAME_REGEX = new RegExp(
@@ -96,7 +99,8 @@ export default class AuthenticationService {
       user.phoneVerified = true;
       user.name = request.name == null ? request.username : request.name;
       await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        await transactionalEntityManager.save(user);
+        const savedUser = await transactionalEntityManager.save(user);
+        this.redisService.hmset(`user:${savedUser.id}`, { username: savedUser.username, name: savedUser.name });
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {
@@ -281,7 +285,7 @@ export default class AuthenticationService {
       };
     } else {
       response = {
-        isExist: false
+        isExist: false,
       };
     }
     return response;

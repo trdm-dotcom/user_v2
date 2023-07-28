@@ -16,6 +16,7 @@ import CacheService from './CacheService';
 import { UserStatus } from '../models/enum/UserStatus';
 import * as bcrypt from 'bcrypt';
 import * as utils from '../utils/Utils';
+import RedisService from './RedisService';
 
 @Service()
 export default class SocialAuthenticateService {
@@ -25,6 +26,8 @@ export default class SocialAuthenticateService {
   private googleService: GoogleService;
   @Inject()
   private facebookService: FacebookService;
+  @Inject()
+  private redisService: RedisService;
   private socialRepository: Repository<Social> = AppDataSource.getRepository(Social);
   private userRepository: Repository<User> = AppDataSource.getRepository(User);
 
@@ -87,6 +90,7 @@ export default class SocialAuthenticateService {
         social.avatarUrl = info.getAvatar();
         social.userid = user.id;
         await transactionalEntityManager.save(social);
+        this.redisService.hmset(`user:${user.id}`, { username: user.username, name: user.name });
         return {
           id: user.id,
           username: user.username,
@@ -150,6 +154,7 @@ export default class SocialAuthenticateService {
         social.profileUrl = info.getProfileUrl();
         social.userid = user.id;
         await transactionalEntityManager.save(social);
+        this.redisService.hmset(`user:${user.id}`, { username: user.username, name: user.name });
         return {
           id: user.id,
           username: user.username,
