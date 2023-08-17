@@ -9,6 +9,8 @@ import BiometricService from '../services/BiometricService';
 import SocialAuthenticateService from '../services/SocialAuthenticateService';
 import { getInstance } from '../services/KafkaProducerService';
 
+const { UriNotFound } = Errors;
+
 @Service()
 export default class RequestHandler {
   @Inject()
@@ -96,7 +98,7 @@ export default class RequestHandler {
           return await this.biometricService.cancelBiometricRegister(message.data, message.transactionId);
 
         default:
-          return false;
+          throw new UriNotFound();
       }
     }
   };
