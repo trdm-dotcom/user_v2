@@ -1,4 +1,4 @@
-import { Inject, Service } from 'typedi';
+import { Service } from 'typedi';
 import Friend from '../models/entities/Friend';
 import { Repository } from 'typeorm';
 import User from '../models/entities/User';
@@ -11,12 +11,10 @@ import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
 import { FirebaseType, IDataRequest } from 'common/build/src/modules/models';
 import IFriendResponse from '../models/response/IFriendResponse';
-import RedisService from './RedisService';
+import { ISuggestFriendRequest } from '../models/request/ISuggestFriendRequest';
 
 @Service()
 export default class FriendService {
-  @Inject()
-  private redisService: RedisService;
   private userRepository: Repository<User> = AppDataSource.getRepository(User);
   private friendRepository: Repository<Friend> = AppDataSource.getRepository(Friend);
 
@@ -42,8 +40,13 @@ export default class FriendService {
           concatid: [`${userId}_${user.id}`, `${user.id}_${userId}`],
         })
         .getMany();
-      if (friends && friends.length > 0) {
-        throw new Errors.GeneralError(Constants.ALREADY_EXISTS);
+      if (friends) {
+        if (friends.map((v) => v.status).includes(FriendStatus.BLOCKED)) {
+          throw new Errors.GeneralError(Constants.WAS_BLOCKED);
+        }
+        if (friends.length > 0) {
+          throw new Errors.GeneralError(Constants.ALREADY_EXISTS);
+        }
       }
       const friend: Friend = new Friend();
       friend.sourceId = userId;
@@ -77,8 +80,10 @@ export default class FriendService {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    const userId: number = request.headers.token.userData.id;
     const friend: Friend = await this.friendRepository.findOneBy({
       id: request.friend as number,
+      targetId: userId,
       status: FriendStatus.PENDING,
     });
     if (friend == null) {
@@ -86,11 +91,7 @@ export default class FriendService {
     }
     friend.status = FriendStatus.FRIENDED;
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-      await Promise.all([
-        transactionalEntityManager.save(friend),
-        this.redisService.sadd(`user:${friend.sourceId}:friends`, friend.targetId),
-        this.redisService.sadd(`user:${friend.targetId}:friends`, friend.sourceId),
-      ]);
+      await Promise.all([transactionalEntityManager.save(friend)]);
     });
     utils.sendMessagePushNotification(
       transactionId.toString(),
@@ -109,34 +110,29 @@ export default class FriendService {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
-    const friend: Friend = await this.friendRepository.findOneBy({ id: request.friend as number });
+    const userId: number = request.headers.token.userData.id;
+    const friend: Friend[] = await this.friendRepository
+      .createQueryBuilder('friend')
+      .where('id = :id and (sourceId = :=userId or targetId = :userId) and status != BLOCKED', {
+        id: request.friend as number,
+        userId: userId,
+      })
+      .getMany();
     if (friend == null) {
       throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
     }
     await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-      await Promise.all([
-        transactionalEntityManager.delete(Friend, friend.id),
-        this.redisService.srem(`user:${friend.sourceId}:friends`, friend.targetId),
-        this.redisService.srem(`user:${friend.targetId}:friends`, friend.sourceId),
-        this.redisService.del(
-          `room:${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
-        ),
-        this.redisService.srem(
-          `user:${friend.sourceId}:rooms`,
-          `${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
-        ),
-        this.redisService.srem(
-          `user:${friend.targetId}:rooms`,
-          `${Math.min(friend.targetId, friend.sourceId)}:${Math.max(friend.sourceId, friend.targetId)}`
-        ),
-      ]);
+      const listPromise: Promise<any>[] = friend
+        .map((friend) => [transactionalEntityManager.delete(Friend, friend.id)])
+        .reduce((a, b) => a.concat(b), []);
+      await Promise.all(listPromise);
     });
     return {};
   }
 
   public async getRequestFriend(request: IDataRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const result: any[] = await this.findFriendByTargetId(userId, FriendStatus.PENDING);
+    const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING);
     return result.map((v: any, i: number) => {
       let item: IFriendResponse = {
         friend: v.id,
@@ -150,7 +146,7 @@ export default class FriendService {
 
   public async getFriend(request: IDataRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const result: any[] = await this.findFriendByTargetId(userId, FriendStatus.FRIENDED);
+    const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED);
     return result.map((v: any, i: number) => {
       let item: IFriendResponse = {
         friend: v.id,
@@ -162,11 +158,86 @@ export default class FriendService {
     });
   }
 
-  private async findFriendByTargetId(userId: number, status: FriendStatus) {
+  public async getSuggestByContact(request: ISuggestFriendRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const users: any[] = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .where('user.username IN (:phone) and user.id != :userId', { phone: request.phone, userId: userId })
+      .getMany();
+    let map: Map<string, any> = new Map<string, any>();
+    users.forEach((v: any, i: number) => {
+      map.set(v.username, { id: v.id, name: v.name, avatar: v.avatar, status: v.status });
+    });
+    return request.phone.map((v: any, i: number) => map.get(v));
+  }
+
+  public async blockFriend(request: IFriendRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
+    const user: User = await this.userRepository.findOneBy({
+      username: request.friend as string,
+      status: UserStatus.ACTIVE,
+    });
+    if (user == null) {
+      throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
+    }
+    if (user.username == request.headers.token.userData.username) {
+      throw new Errors.GeneralError(Constants.INVALID_USER);
+    }
+    await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      const friends: Friend[] = await this.friendRepository
+        .createQueryBuilder('friend')
+        .where("CONCAT(friend.sourceId, '_', friend.targetId) in (:concatid)", {
+          concatid: [`${userId}_${user.id}`, `${user.id}_${userId}`],
+        })
+        .getMany();
+      let listPromise: Promise<any>[] = [];
+      if (friends) {
+        listPromise = friends.map((friend) => {
+          friend.status = FriendStatus.BLOCKED;
+          return transactionalEntityManager.save(friend);
+        });
+      } else {
+        const friend: Friend = new Friend();
+        friend.sourceId = userId;
+        friend.targetId = user.id;
+        friend.status = FriendStatus.BLOCKED;
+        listPromise.push(transactionalEntityManager.save(friend));
+      }
+      await Promise.all([...listPromise]);
+    });
+  }
+
+  public async unblockFriend(request: IFriendRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const friend: Friend = await this.friendRepository.findOneBy({
+      id: request.friend as number,
+      sourceId: userId,
+      status: FriendStatus.BLOCKED,
+    });
+    if (friend == null) {
+      throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
+    }
+    await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      await transactionalEntityManager.delete(Friend, friend.id);
+    });
+    return {};
+  }
+
+  private async findFriendBy(userId: number, status: FriendStatus) {
     return await this.friendRepository
       .createQueryBuilder('friend')
-      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
-      .where('friend.targetId = :userId and friend.status = :status ', { userId: userId, status: status })
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .where(
+        '(friend.targetId = :userId or friend.sourceId = :userId) and user.id != :userId and friend.status = :status',
+        {
+          userId: userId,
+          status: status,
+        }
+      )
       .getMany();
   }
 }

@@ -37,4 +37,5 @@ export default class Constants {
   public static INCORRECT_PASSWORD = 'incorrect_password';
   public static BIOMETRIC_NOT_FOUND = 'login_biometric_not_found';
   public static BIOMETRIC_VERIFY_FAILED = 'login_biometric_signature_verification_failed';
+  public static WAS_BLOCKED = 'was_blocked';
 }

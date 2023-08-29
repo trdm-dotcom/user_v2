@@ -88,6 +88,15 @@ export default class RequestHandler {
         case 'get:/api/v1/user/friend/request':
           return await this.friendService.getRequestFriend(message.data, message.transactionId);
 
+        case 'get:/api/v1/user/friend/suggestByContact':
+          return await this.friendService.getSuggestByContact(message.data, message.transactionId);
+
+        case 'post:/api/v1/user/friend/block':
+          return await this.friendService.blockFriend(message.data, message.transactionId);
+
+        case 'delete:/api/v1/user/friend/block':
+          return await this.friendService.unblockFriend(message.data, message.transactionId);
+
         case 'post:/api/v1/user/bio/registerBiometric':
           return await this.biometricService.registerBiometric(message.data, message.transactionId);
 
