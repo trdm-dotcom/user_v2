@@ -12,7 +12,6 @@ import { UserStatus } from '../models/enum/UserStatus';
 import Constants from '../Constants';
 import ILoginValid from '../models/redis/ILoginValid';
 import User from '../models/entities/User';
-import { AppDataSource } from '../Connection';
 import { Repository } from 'typeorm';
 import { IRegisterRequest } from '../models/request/IRegisterRequest';
 import IResultResponse from '../models/response/IResultResponse';
@@ -20,7 +19,7 @@ import IChangePasswordRequest from '../models/request/IChangePasswordRequest';
 import IResetPasswordRequest from '../models/request/IResetPasswordRequest';
 import ICheckExistRequest from '../models/request/ICheckExistRequest';
 import ICheckExistResponse from '../models/response/ICheckExistResponse';
-import RedisService from './RedisService';
+import { InjectRepository } from 'typeorm-typedi-extensions';
 
 @Service()
 export default class AuthenticationService {
@@ -28,14 +27,14 @@ export default class AuthenticationService {
   private cacheService: CacheService;
   @Inject()
   private tokenService: TokenService;
-  @Inject()
-  private redisService: RedisService;
+  @InjectRepository(User)
+  private userRepository: Repository<User>;
   private PASSWORD_REGEX = new RegExp('^(?<!\\.)(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[\\W,_])[.!-~]{6,}$(?<!\\.)');
-  private USERNAME_REGEX = new RegExp('^(?<!\\.)\\d{10}$(?<!\\.)');
+  private PHONE_NUMBER_REGEX = new RegExp('^(?<!\\.)\\d{10}$(?<!\\.)');
   private FULLNAME_REGEX = new RegExp(
     '^(?<!\\.)[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹs]*$(?<!\\.)'
   );
-  private userRepository: Repository<User> = AppDataSource.getRepository(User);
+  private EMAIL_REGEX = new RegExp('^(?<!\\.)[\\w-.]+@([\\w-]+.)+[\\w-]{2,4}$(?<!\\.)');
 
   public async login(request: ILoginRequest, transactionId: string | number): Promise<ILoginResponse> {
     const invalidParams = new Errors.InvalidParameterError();
@@ -53,16 +52,17 @@ export default class AuthenticationService {
     }
     const response: ILoginResponse = {
       id: user.id,
-      username: user.username,
       status: user.status,
       name: user.name,
     };
     return response;
   }
 
-  public async register(request: IRegisterRequest, transactionId: string | number): Promise<IResultResponse> {
+  public async register(request: IRegisterRequest, transactionId: string | number): Promise<ILoginResponse> {
     const invalidParams = new Errors.InvalidParameterError();
-    Utils.validate(request.username, 'username').setRequire().throwValid(invalidParams);
+    Utils.validate(request.name, 'name').setRequire().throwValid(invalidParams);
+    Utils.validate(request.email, 'email').setRequire().throwValid(invalidParams);
+    Utils.validate(request.phoneNumber, 'phoneNumber').setRequire().throwValid(invalidParams);
     Utils.validate(request.password, 'password').setRequire().throwValid(invalidParams);
     Utils.validate(request.otpKey, 'otpKey').setRequire().throwValid(invalidParams);
     Utils.validate(request.hash, 'hash').setRequire().throwValid(invalidParams);
@@ -71,8 +71,11 @@ export default class AuthenticationService {
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
       : request.password;
-    if (!this.USERNAME_REGEX.test(request.username)) {
-      throw new Errors.GeneralError(Constants.USER_NOT_MATCHED_POLICY);
+    if (!this.EMAIL_REGEX.test(request.email)) {
+      throw new Errors.GeneralError(Constants.EMAIL_NOT_MATCHED_POLICY);
+    }
+    if (!this.PHONE_NUMBER_REGEX.test(request.phoneNumber)) {
+      throw new Errors.GeneralError(Constants.PHONE_NUMBER_NOT_MATCHED_POLICY);
     }
     if (!this.PASSWORD_REGEX.test(password)) {
       throw new Errors.GeneralError(Constants.PASS_NOT_MATCHED_POLICY);
@@ -81,28 +84,29 @@ export default class AuthenticationService {
       throw new Errors.GeneralError(Constants.NAME_NOT_MATCHED_POLICY);
     }
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
+    let entityUser: User;
     try {
       if (
-        await this.cacheService.findInprogessValidate(request.username, Constants.REGISTER_INPROGESS, transactionId)
+        await this.cacheService.findInprogessValidate(request.phoneNumber, Constants.REGISTER_INPROGESS, transactionId)
       ) {
-        throw new Error(Constants.INPROGESS);
+        throw new Errors.GeneralError(Constants.INPROGESS);
       }
-      this.cacheService.addInprogessValidate(request.username, Constants.REGISTER_INPROGESS, transactionId);
-      if ((await this.userRepository.findOneBy({ username: request.username })) != null) {
-        throw new Error(Constants.USER_ALREADY_EXISTS);
+      this.cacheService.addInprogessValidate(request.phoneNumber, Constants.REGISTER_INPROGESS, transactionId);
+      if ((await this.userRepository.findOne({ phoneNumber: request.phoneNumber })) != null) {
+        throw new Errors.GeneralError(Constants.USER_ALREADY_EXISTS);
+      }
+      if ((await this.userRepository.findOne({ email: request.email })) != null) {
+        throw new Errors.GeneralError(Constants.EMAIL_ALREADY_EXISTS);
       }
       const user: User = new User();
-      user.username = request.username;
+      user.email = request.email;
+      user.name = request.name;
       user.password = await this.hashPassword(password);
-      user.phoneNumber = request.username;
+      user.phoneNumber = request.phoneNumber;
       user.status = UserStatus.ACTIVE;
       user.phoneVerified = true;
-      user.name = request.name == null ? request.username : request.name;
-      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        const savedUser = await transactionalEntityManager.save(user);
-        this.redisService.hmset(`user:${savedUser.id}`, { username: savedUser.username, name: savedUser.name });
-      });
-      this.cacheService.removeOtpKey(clams.id, transactionId);
+      entityUser = await this.userRepository.save(user);
+      await this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -111,17 +115,26 @@ export default class AuthenticationService {
         throw new Errors.GeneralError();
       }
     } finally {
-      this.cacheService.removeInprogessValidate(request.username, Constants.REGISTER_INPROGESS, transactionId);
+      this.cacheService.removeInprogessValidate(request.phoneNumber, Constants.REGISTER_INPROGESS, transactionId);
     }
-    const response: IResultResponse = {
-      status: Constants.REGISTER_SUCCESSFUL,
+    const response: ILoginResponse = {
+      id: entityUser.id,
+      status: entityUser.status,
+      name: entityUser.name,
     };
     return response;
   }
 
   public async findAndValidUser(request: ILoginRequest, transactionId: string | number): Promise<User> {
     const now: Date = new Date();
-    const user: User = await this.userRepository.findOneBy({ username: request.username });
+    const users: User[] = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.phoneNumber = :username or user.email = :username', { username: request.username })
+      .getMany();
+    if (users.length > 1) {
+      throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
+    }
+    const user: User = users[0];
     try {
       let loginValid: ILoginValid = await this.cacheService.findLoginValidate(request.username, transactionId);
       if (loginValid.failCount >= config.app.loginTemporarilyLocked) {
@@ -166,7 +179,6 @@ export default class AuthenticationService {
     request: IChangePasswordRequest,
     transactionId: string | number
   ): Promise<IResultResponse> {
-    const username: string = request.headers.token.userData.username;
     const userId: number = request.headers.token.userData.id;
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.oldPassword, 'oldPassword').setRequire().throwValid(invalidParams);
@@ -189,22 +201,22 @@ export default class AuthenticationService {
     }
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
     try {
-      while (await this.cacheService.findInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId)) {
+      while (
+        await this.cacheService.findInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId)
+      ) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
-      this.cacheService.addInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
-      const user: User = await this.userRepository.findOneBy({ id: userId });
+      this.cacheService.addInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId);
+      const user: User = await this.userRepository.findOne({ id: userId });
       if (user == null) {
         throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
       if (!(await this.comparePassword(oldPassword, user.password))) {
         throw new Errors.GeneralError(Constants.INCORRECT_OLD_PASSWORD);
       }
-      user.password = await this.hashPassword(newPassword);
-      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        await transactionalEntityManager.save(user);
-      });
-      this.cacheService.removeOtpKey(clams.id, transactionId);
+      const hashPassword = await this.hashPassword(newPassword);
+      await this.userRepository.update({ id: userId }, { password: hashPassword });
+      await this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -213,7 +225,7 @@ export default class AuthenticationService {
         throw new Errors.GeneralError();
       }
     } finally {
-      this.cacheService.removeInprogessValidate(username, Constants.UPDATE_INPROGESS, transactionId);
+      this.cacheService.removeInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.CHANGED_PASSWORD_SUCCESSFULL,
@@ -235,28 +247,35 @@ export default class AuthenticationService {
     if (!this.PASSWORD_REGEX.test(newPassword)) {
       throw new Errors.GeneralError(Constants.PASS_NOT_MATCHED_POLICY);
     }
-    const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
+    let userId: number;
     try {
+      const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
+      const users: User[] = await this.userRepository
+        .createQueryBuilder('user')
+        .where('user.phoneNumber = :username or user.email = :username', {
+          username: request.username,
+        })
+        .getMany();
+      if (users.length == 0) {
+        throw new Errors.GeneralError(Constants.INVALID_USER);
+      }
+      const user: User = users[0];
+      userId = user.id;
       while (
-        await this.cacheService.findInprogessValidate(request.username, Constants.UPDATE_INPROGESS, transactionId)
+        await this.cacheService.findInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId)
       ) {
         Logger.warn(`${transactionId} waiting do progess`);
       }
-      this.cacheService.addInprogessValidate(request.username, Constants.UPDATE_INPROGESS, transactionId);
-      const user: User = await this.userRepository.findOneBy({
-        username: request.username,
-      });
+      this.cacheService.addInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId);
       if (user == null) {
         throw new Errors.GeneralError(Constants.USER_NOT_FOUND);
       }
       if (await this.comparePassword(newPassword, user.password)) {
         throw new Errors.GeneralError(Constants.PASSWORD_HAS_NOT_BEEN_CHANGED);
       }
-      user.password = await this.hashPassword(newPassword);
-      await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
-        await transactionalEntityManager.save(user);
-      });
-      this.cacheService.removeOtpKey(clams.id, transactionId);
+      const hashPassword = await this.hashPassword(newPassword);
+      await this.userRepository.update({ id: userId }, { password: hashPassword });
+      await this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -265,7 +284,7 @@ export default class AuthenticationService {
         throw new Errors.GeneralError();
       }
     } finally {
-      this.cacheService.removeInprogessValidate(request.username, Constants.UPDATE_INPROGESS, transactionId);
+      this.cacheService.removeInprogessValidate(userId, Constants.CHANGE_PASSWORD_INPROGESS, transactionId);
     }
     const response: IResultResponse = {
       status: Constants.RESET_PASSWORD_SUCCESSFULL,
@@ -278,8 +297,11 @@ export default class AuthenticationService {
     Utils.validate(request.value, 'value').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     let response: ICheckExistResponse;
-    const user: User = await this.userRepository.findOneBy({ username: request.value });
-    if (user != null) {
+    const users: User[] = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.phoneNumber = :value or user.email = :value', { value: request.value })
+      .getMany();
+    if (users.length > 0) {
       response = {
         isExist: true,
       };

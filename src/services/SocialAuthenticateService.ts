@@ -1,7 +1,6 @@
 import { Inject, Service } from 'typedi';
 import Social from '../models/entities/Social';
-import { AppDataSource } from '../Connection';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ISocialLoginRequest } from '../models/request/ISocialLoginRequest';
 import { Errors, Logger, Utils } from 'common';
 import { SocialType } from '../models/enum/SocialType';
@@ -16,7 +15,7 @@ import CacheService from './CacheService';
 import { UserStatus } from '../models/enum/UserStatus';
 import * as bcrypt from 'bcrypt';
 import * as utils from '../utils/Utils';
-import RedisService from './RedisService';
+import { InjectManager, InjectRepository } from 'typeorm-typedi-extensions';
 
 @Service()
 export default class SocialAuthenticateService {
@@ -26,10 +25,12 @@ export default class SocialAuthenticateService {
   private googleService: GoogleService;
   @Inject()
   private facebookService: FacebookService;
-  @Inject()
-  private redisService: RedisService;
-  private socialRepository: Repository<Social> = AppDataSource.getRepository(Social);
-  private userRepository: Repository<User> = AppDataSource.getRepository(User);
+  @InjectRepository(Social)
+  private socialRepository: Repository<Social>;
+  @InjectRepository(User)
+  private userRepository: Repository<User>;
+  @InjectManager()
+  private manager: EntityManager;
 
   public async login(request: ISocialLoginRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
@@ -47,7 +48,7 @@ export default class SocialAuthenticateService {
   }
 
   private async facebook(socialToken: string, transactionId: string | number) {
-    var infoId: string = null;
+    let infoId: string;
     try {
       const info: FacebookResponse = await this.facebookService.queryFacebookInfo(socialToken, transactionId);
       infoId = info.getId();
@@ -55,16 +56,15 @@ export default class SocialAuthenticateService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       this.cacheService.addInprogessValidate(info.getId(), Constants.SOCIAL_INPROGESS, transactionId);
-      const social: Social = await this.socialRepository.findOneBy({
+      const social: Social = await this.socialRepository.findOne({
         socicalId: info.getId(),
         socicalType: SocialType.FACEBOOK,
       });
       if (social != null) {
-        const user: User = await this.userRepository.findOneBy({ id: social.userid });
+        const user: User = await this.userRepository.findOne({ id: social.userid });
         if (user != null) {
           const response: ILoginResponse = {
             id: user.id,
-            username: user.username,
             status: user.status,
             name: user.name,
           };
@@ -73,9 +73,8 @@ export default class SocialAuthenticateService {
           throw new Errors.GeneralError(Constants.INVALID_USER);
         }
       }
-      const response: ILoginResponse = await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      return await this.manager.transaction(async (transactionalEntityManager) => {
         let user: User = new User();
-        user.username = info.getId();
         user.name = info.getName();
         user.birthDay = Utils.convertStringToDate(info.getBirthday());
         user.status = UserStatus.ACTIVE;
@@ -90,15 +89,12 @@ export default class SocialAuthenticateService {
         social.avatarUrl = info.getAvatar();
         social.userid = user.id;
         await transactionalEntityManager.save(social);
-        this.redisService.hmset(`user:${user.id}`, { username: user.username, name: user.name });
         return {
           id: user.id,
-          username: user.username,
           status: user.status,
           name: user.name,
         };
       });
-      return response;
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -107,14 +103,12 @@ export default class SocialAuthenticateService {
         throw new Errors.GeneralError();
       }
     } finally {
-      if (infoId != null) {
-        this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
-      }
+      this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
     }
   }
 
   private async google(socialToken: string, transactionId: string | number) {
-    var infoId: string = null;
+    let infoId: string;
     try {
       const info: GoogleResponse = await this.googleService.queryGoogleInfo(socialToken, transactionId);
       infoId = info.getId();
@@ -122,16 +116,15 @@ export default class SocialAuthenticateService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       this.cacheService.addInprogessValidate(info.getId(), Constants.SOCIAL_INPROGESS, transactionId);
-      const social: Social = await this.socialRepository.findOneBy({
+      const social: Social = await this.socialRepository.findOne({
         socicalId: info.getId(),
         socicalType: SocialType.GOOGLE,
       });
       if (social != null) {
-        const user: User = await this.userRepository.findOneBy({ id: social.userid });
+        const user: User = await this.userRepository.findOne({ id: social.userid });
         if (user != null) {
           const response: ILoginResponse = {
             id: user.id,
-            username: user.username,
             status: user.status,
             name: user.name,
           };
@@ -140,9 +133,8 @@ export default class SocialAuthenticateService {
           throw new Errors.GeneralError(Constants.INVALID_USER);
         }
       }
-      const response: ILoginResponse = await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+      return await this.manager.transaction(async (transactionalEntityManager) => {
         let user: User = new User();
-        user.username = info.getId();
         user.name = info.getName();
         user.status = UserStatus.ACTIVE;
         user.phoneVerified = true;
@@ -154,15 +146,12 @@ export default class SocialAuthenticateService {
         social.profileUrl = info.getProfileUrl();
         social.userid = user.id;
         await transactionalEntityManager.save(social);
-        this.redisService.hmset(`user:${user.id}`, { username: user.username, name: user.name });
         return {
           id: user.id,
-          username: user.username,
           status: user.status,
           name: user.name,
         };
       });
-      return response;
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -171,9 +160,7 @@ export default class SocialAuthenticateService {
         throw new Errors.GeneralError();
       }
     } finally {
-      if (infoId != null) {
-        this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
-      }
+      this.cacheService.removeInprogessValidate(infoId, Constants.SOCIAL_INPROGESS, transactionId);
     }
   }
 

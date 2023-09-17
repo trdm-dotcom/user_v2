@@ -1,5 +1,6 @@
 export interface IRegisterRequest {
-    username?: string;
+    phoneNumber?: string;
+    email?: string;
     password?: string;
     otpKey?: string;
     hash?: string;

@@ -1,11 +1,11 @@
 import { UserStatus } from '../enum/UserStatus';
 
 export default interface IUserInfoResponse {
+  id?: number;
   name?: string;
-  username?: string;
-  isVerified?: boolean;
   status?: UserStatus;
-  deviceToken?: string;
   phoneNumber?: string;
+  email?: string;
   avatar?: string;
+  birthDay?: Date;
 }

@@ -7,13 +7,13 @@ export default class User {
   id: number;
   @Column({ name: 'name' })
   name: string;
-  @Column({ name: 'username' })
-  username: string;
   @Column({ name: 'password' })
   password: string;
-  @Column({ name: 'phone_number' })
+  @Column({ name: 'phone_number', unique: true })
   phoneNumber: string;
-  @Column({ name: 'phone_verified' })
+  @Column({ name: 'email', unique: true })
+  email: string;
+  @Column({ name: 'phone_verified', default: false })
   phoneVerified: boolean;
   @Column({
     name: 'status',
@@ -22,11 +22,9 @@ export default class User {
     default: UserStatus.ACTIVE,
   })
   status: UserStatus;
-  @Column({ name: 'device_token' })
-  deviceToken: string;
-  @Column({ name: 'birth_day' })
+  @Column({ name: 'birth_day', nullable: true })
   birthDay: Date;
-  @Column({ name: 'avatar' })
+  @Column({ name: 'avatar', nullable: true })
   avatar: string;
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

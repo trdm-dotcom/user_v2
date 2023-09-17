@@ -1,10 +1,12 @@
 export default class Constants {
   public static USER_NOT_FOUND = 'user_not_found';
   public static USER_ALREADY_EXISTS = 'user_already_exists';
+  public static EMAIL_ALREADY_EXISTS = 'email_already_exists';
   public static LOGIN_TEMPORARILY_LOCKED = 'login_temporarily_locked';
   public static OBJECT_NOT_FOUND = 'object_not_found';
   public static INCORRECT_OLD_PASSWORD = 'incorrect_old_password';
-  public static USER_NOT_MATCHED_POLICY = 'user_not_matched_policy';
+  public static PHONE_NUMBER_NOT_MATCHED_POLICY = 'phone_number_not_matched_policy';
+  public static EMAIL_NOT_MATCHED_POLICY = 'email_not_matched_policy';
   public static PASS_NOT_MATCHED_POLICY = 'pass_not_matched_policy';
   public static NAME_NOT_MATCHED_POLICY = 'name_not_matched_policy';
   public static INVALID_CLIENT_CREDENTIAL = 'invalid_client_credential';
@@ -20,8 +22,10 @@ export default class Constants {
   public static REGISTER_INPROGESS = 'register_validate_inprogess';
   public static INPROGESS = 'inprogess';
   public static UPDATE_INPROGESS = 'update_inprogess';
+  public static CHANGE_PASSWORD_INPROGESS = 'change_password_inprogess';
   public static DISABLE_INPROGESS = 'disable_inprogess';
   public static SOCIAL_INPROGESS = 'social_inprogess';
+  public static BLOCK_INPROGESS = 'block_inprogess';
   public static UPDATE_USER_INFO_SUCCESSFULL = 'UPDATE_USER_INFO_SUCCESSFULL';
   public static UPDATE_USER_INFO_FAIL = 'update_user_info_fail';
   public static INVALID_SOCIAL_TOKEN = 'invalid_social_token';
@@ -38,4 +42,5 @@ export default class Constants {
   public static BIOMETRIC_NOT_FOUND = 'login_biometric_not_found';
   public static BIOMETRIC_VERIFY_FAILED = 'login_biometric_signature_verification_failed';
   public static WAS_BLOCKED = 'was_blocked';
+  public static USER_DONT_HAVE_PERMISSION = 'user_dont_have_permission';
 }

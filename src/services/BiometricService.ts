@@ -1,7 +1,6 @@
 import { Inject, Service } from 'typedi';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import Biometric from '../models/entities/Biometric';
-import { AppDataSource } from '../Connection';
 import { IBiometricRegisterRequest } from '../models/request/IBiometricRegisterRequest';
 import { Errors, Logger, Utils } from 'common';
 import Constants from '../Constants';
@@ -15,12 +14,16 @@ import AuthenticationService from './AuthenticationService';
 import { ILoginRequest } from '../models/request/ILoginRequest';
 import { ILoginResponse } from '../models/response/ILoginResponse';
 import * as utils from '../utils/Utils';
+import { InjectManager, InjectRepository } from 'typeorm-typedi-extensions';
 
 @Service()
 export default class BiometricService {
   @Inject()
   private authenticationService: AuthenticationService;
-  private biometricRepository: Repository<Biometric> = AppDataSource.getRepository(Biometric);
+  @InjectRepository(Biometric)
+  private biometricRepository: Repository<Biometric>;
+  @InjectManager()
+  private manager: EntityManager;
 
   public async registerBiometric(request: IBiometricRegisterRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
@@ -31,7 +34,7 @@ export default class BiometricService {
     invalidParams.throwErr();
     utils.validHash(request.hash, 'BIOMETRIC');
     await this.registerBiometricValidation(request.headers.token.userData.username, request.publicKey, transactionId);
-    const biometric = await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+    const biometric = await this.manager.transaction(async (transactionalEntityManager) => {
       const biometric: Biometric = new Biometric();
       biometric.userid = request.headers.token.userData.id;
       biometric.username = request.headers.token.userData.username;
@@ -47,7 +50,7 @@ export default class BiometricService {
 
   public async queryBiometricStatus(request: IBiometricStatusRequest, transactionId: string | number) {
     if (request.publicKey != null) {
-      const biometrices: Biometric[] = await this.biometricRepository.findBy({
+      const biometrices: Biometric[] = await this.biometricRepository.find({
         userid: request.userId,
         status: BiometricStatus.ACTIVE,
         isDeleted: false,
@@ -55,7 +58,7 @@ export default class BiometricService {
       });
       return { isEnable: biometrices.length > 0 };
     } else {
-      const biometrices: Biometric[] = await this.biometricRepository.findBy({
+      const biometrices: Biometric[] = await this.biometricRepository.find({
         userid: request.userId,
         status: BiometricStatus.ACTIVE,
         isDeleted: false,
@@ -112,7 +115,6 @@ export default class BiometricService {
     const user: User = await this.authenticationService.findAndValidUser(loginRequest, transactionId);
     const response: ILoginResponse = {
       id: user.id,
-      username: user.username,
       status: user.status,
       name: user.name,
     };
@@ -134,7 +136,7 @@ export default class BiometricService {
   }
 
   private async updateBiometric(biometric: Biometric, status: boolean, reason: string) {
-    await AppDataSource.manager.transaction(async (transactionalEntityManager) => {
+    await this.manager.transaction(async (transactionalEntityManager) => {
       biometric.status = BiometricStatus.INACTIVE;
       biometric.isDeleted = status;
       biometric.deleteReason = biometric.status == BiometricStatus.INACTIVE ? Constants.BIOMETRIC_OTP_VERIFY : reason;
@@ -149,14 +151,14 @@ export default class BiometricService {
     status?: BiometricStatus
   ) {
     if (status != null) {
-      return await this.biometricRepository.findBy({
+      return await this.biometricRepository.find({
         username: username,
         isDeleted: isDeleted,
         status: status,
         deviceId: deviceId,
       });
     } else {
-      return await this.biometricRepository.findBy({
+      return await this.biometricRepository.find({
         username: username,
         isDeleted: isDeleted,
         deviceId: deviceId,

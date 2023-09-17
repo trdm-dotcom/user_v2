@@ -1,8 +1,6 @@
 import { FriendStatus } from '../enum/FriendStatus';
+import IUserInfoResponse from './IUserInfoResponse';
 
-export default interface IFriendResponse {
-  friend?: string;
-  name?: string;
-  status?: FriendStatus;
-  avatar?: string;
+export default interface IFriendResponse extends IUserInfoResponse {
+  statusFriend?: FriendStatus;
 }

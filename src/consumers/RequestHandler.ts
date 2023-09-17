@@ -64,9 +64,6 @@ export default class RequestHandler {
         case 'get:/api/v1/user/info':
           return await this.userService.getUserInfo(message.data, message.transactionId);
 
-        case 'get:/api/v1/user/search':
-          return await this.userService.searchUser(message.data, message.transactionId);
-
         case 'post:/api/v1/user/confirm':
           return await this.userService.confirmUser(message.data, message.transactionId);
 
@@ -105,6 +102,12 @@ export default class RequestHandler {
 
         case 'delete:/api/v1/user/bio/cancelBiometricRegister':
           return await this.biometricService.cancelBiometricRegister(message.data, message.transactionId);
+
+        case 'internal:/api/v1/user/checkFriend':
+          return await this.friendService.checkFriend(message.data, message.transactionId);
+
+        case 'internal:/api/v1/userInfos':
+          return await this.userService.getUserInfos(message.data, message.transactionId);
 
         default:
           throw new UriNotFound();
