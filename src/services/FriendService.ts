@@ -1,6 +1,6 @@
 import { Inject, Service } from 'typedi';
 import Friend from '../models/entities/Friend';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, In, Repository, SelectQueryBuilder } from 'typeorm';
 import User from '../models/entities/User';
 import IFriendRequest from '../models/request/IFriendRequest';
 import { Errors, Logger, Utils } from 'common';
@@ -188,28 +188,26 @@ export default class FriendService {
     transactionId: string | number
   ): Promise<IFriendResponse[]> {
     const userId: number = request.headers.token.userData.id;
-    const users: User[] = await this.userRepository
+    const queryBuilder: SelectQueryBuilder<any> = this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
       .where(
-        '(:phone is null or user.phoneNumber IN (:phone)) and (:search is null or user.name like "%:search%" or user.email like "%:search%" or user.name like "%:search%") and user.id != :userId and friend.id is null',
+        '(:search is null or user.name like :search or user.email like :search or user.name like :search) AND friend.sourceId != :userId AND friend.targetId != :userId',
         {
-          phone: request.phone,
-          search: request.search,
+          search: request.search ? `%${request.search}%` : null,
           userId: userId,
-        }
-      )
-      .getMany();
-    let map: Map<string, any> = new Map<string, any>();
-    users.forEach((v: User, i: number) => {
-      map.set(v.phoneNumber, {
-        id: v.id,
-        name: v.name,
-        avatar: v.avatar,
-        status: v.status,
       });
-    });
-    return request.phone.map((v: any, i: number) => map.get(v));
+    if (request.phone != null) {
+      queryBuilder.andWhere({ phoneNumber: In(request.phone) });
+    }
+    const users: any = await queryBuilder.getMany();
+    return users.map((v: User, i: number) => ({
+      id: v.id,
+      name: v.name,
+      avatar: v.avatar,
+      status: v.status,
+      phoneNumber: v.phoneNumber,
+    }));
   }
 
   public async blockFriend(request: IFriendRequest, transactionId: string | number) {

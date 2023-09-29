@@ -4,7 +4,7 @@ import TokenService from './TokenService';
 import { IUserInfoRequest } from '../models/request/IUserInfoRequest';
 import { Errors, Logger, Utils } from 'common';
 import User from '../models/entities/User';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import IUserInfoResponse from '../models/response/IUserInfoResponse';
 import { IUpdateUserInfoRequest } from '../models/request/IUpdateUserInfoRequest';
 import IResultResponse from '../models/response/IResultResponse';
@@ -37,7 +37,7 @@ export default class UserService {
   );
 
   public async getUserInfo(request: IUserInfoRequest, transactionId: string | number) {
-    const userId = request.headers.token.userData.id;
+    const userId = request.userId ? request.userId : request.headers.token.userData.id;
     const user: User = await this.userRepository.findOne({ id: userId });
     const response: IUserInfoResponse = {
       name: user.name,
@@ -45,6 +45,8 @@ export default class UserService {
       email: user.email,
       phoneNumber: user.phoneNumber,
       birthDay: user.birthDay,
+      avatar: user.avatar,
+      id: user.id,
     };
     return response;
   }
@@ -174,13 +176,19 @@ export default class UserService {
     invalidParams.throwErr();
     const results: User[] = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.id in (:userIds)', { userIds: request.userIds })
+      .where({ id: In(request.userIds)})
       .getMany();
-    return results.map((v: User, i: number) => ({
-      id: v.id,
-      name: v.name,
-      avatar: v.avatar,
-    }));
+    return results.map(
+      (v: User, i: number): IUserInfoResponse => ({
+        name: v.name,
+        status: v.status,
+        email: v.email,
+        phoneNumber: v.phoneNumber,
+        birthDay: v.birthDay,
+        avatar: v.avatar,
+        id: v.id,
+      })
+    );
   }
 
   private async comparePassword(plaintextPassword: string | Buffer, hash: string): Promise<boolean> {
