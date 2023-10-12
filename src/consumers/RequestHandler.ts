@@ -94,6 +94,9 @@ export default class RequestHandler {
         case 'delete:/api/v1/user/friend/block':
           return await this.friendService.unblockFriend(message.data, message.transactionId);
 
+        case 'get:/api/v1/user/friend/block':
+          return await this.friendService.getBlockFriend(message.data, message.transactionId);
+
         case 'post:/api/v1/user/bio/registerBiometric':
           return await this.biometricService.registerBiometric(message.data, message.transactionId);
 
@@ -108,6 +111,9 @@ export default class RequestHandler {
 
         case 'internal:/api/v1/userInfos':
           return await this.userService.getUserInfos(message.data, message.transactionId);
+
+        case 'internal:/api/v1/user/search':
+          return await this.userService.searchUser(message.data, message.transactionId);
 
         default:
           throw new UriNotFound();

@@ -4,7 +4,7 @@ import TokenService from './TokenService';
 import { IUserInfoRequest } from '../models/request/IUserInfoRequest';
 import { Errors, Logger, Utils } from 'common';
 import User from '../models/entities/User';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository } from 'typeorm';
 import IUserInfoResponse from '../models/response/IUserInfoResponse';
 import { IUpdateUserInfoRequest } from '../models/request/IUpdateUserInfoRequest';
 import IResultResponse from '../models/response/IResultResponse';
@@ -21,6 +21,7 @@ import { v4 as uuid } from 'uuid';
 import { InjectRepository } from 'typeorm-typedi-extensions';
 import { getInstance } from './KafkaProducerService';
 import FriendService from './FriendService';
+import { ISearchUserRequest } from '../models/request/ISearchUser';
 
 @Service()
 export default class UserService {
@@ -176,7 +177,7 @@ export default class UserService {
     invalidParams.throwErr();
     const results: User[] = await this.userRepository
       .createQueryBuilder('user')
-      .where({ id: In(request.userIds)})
+      .where({ id: In(request.userIds) })
       .getMany();
     return results.map(
       (v: User, i: number): IUserInfoResponse => ({
@@ -187,6 +188,29 @@ export default class UserService {
         birthDay: v.birthDay,
         avatar: v.avatar,
         id: v.id,
+      })
+    );
+  }
+
+  public async searchUser(request: ISearchUserRequest, transactionId: string | number): Promise<IUserInfoResponse[]> {
+    const userId: number = request.headers.token.userData.id;
+    const users: User[] = await this.userRepository
+      .createQueryBuilder('user')
+      .where(
+        new Brackets((qb) => {
+          qb.where('user.name like :search', { search: `%${request.search}%` });
+        })
+      )
+      .andWhere('id != :userId', { userId })
+      .getMany();
+    return users.map(
+      (user: User): IUserInfoResponse => ({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        status: user.status,
+        phoneNumber: user.phoneNumber,
+        birthDay: user.birthDay,
       })
     );
   }

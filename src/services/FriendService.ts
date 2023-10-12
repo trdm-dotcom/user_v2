@@ -1,6 +1,6 @@
 import { Inject, Service } from 'typedi';
 import Friend from '../models/entities/Friend';
-import { EntityManager, In, Repository, SelectQueryBuilder } from 'typeorm';
+import { Brackets, EntityManager, In, Repository, SelectQueryBuilder } from 'typeorm';
 import User from '../models/entities/User';
 import IFriendRequest from '../models/request/IFriendRequest';
 import { Errors, Logger, Utils } from 'common';
@@ -156,31 +156,53 @@ export default class FriendService {
   public async getRequestFriend(request: IDataRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING);
-    console.log(result);
-
-    return result.map((v: any, i: number) => {
-      let item: IFriendResponse = {
+    return result.map(
+      (v: any, i: number): IFriendResponse => ({
         id: v.id,
         name: v.name,
         status: v.status,
         avatar: v.avatar,
-      };
-      return item;
-    });
+        phoneNumber: v.phoneNumber,
+        birthDay: v.birthDay,
+      })
+    );
   }
 
   public async getFriend(request: IDataRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED);
-    return result.map((v: any, i: number) => {
-      let item: IFriendResponse = {
+    return result.map(
+      (v: any, i: number): IFriendResponse => ({
         id: v.id,
         name: v.name,
         status: v.status,
         avatar: v.avatar,
-      };
-      return item;
-    });
+        phoneNumber: v.phoneNumber,
+        birthDay: v.birthDay,
+      })
+    );
+  }
+
+  public async getBlockFriend(request: IDataRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const result: any[] = await this.friendRepository
+      .createQueryBuilder('friend')
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .where('friend.targetId = :userId and user.id != :userId and friend.status = :status', {
+        userId: userId,
+        status: FriendStatus.BLOCKED,
+      })
+      .getMany();
+    return result.map(
+      (v: any, i: number): IFriendResponse => ({
+        id: v.id,
+        name: v.name,
+        status: v.status,
+        avatar: v.avatar,
+        phoneNumber: v.phoneNumber,
+        birthDay: v.birthDay,
+      })
+    );
   }
 
   public async getSuggestByContact(
@@ -192,22 +214,31 @@ export default class FriendService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
       .where(
-        '(:search is null or user.name like :search or user.email like :search or user.name like :search) AND friend.sourceId != :userId AND friend.targetId != :userId',
-        {
-          search: request.search ? `%${request.search}%` : null,
-          userId: userId,
-      });
+        new Brackets((qb) => {
+          qb.where('user.name like :search', { search: `%${request.search}%` })
+            .orWhere('user.email like :search', { search: `%${request.search}%` })
+            .orWhere('user.phoneNumber like :search', { search: `%${request.search}%` });
+        })
+      )
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('friend.sourceId != :userId', { userId }).andWhere('friend.targetId != :userId', { userId });
+        })
+      );
     if (request.phone != null) {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
-    const users: any = await queryBuilder.getMany();
-    return users.map((v: User, i: number) => ({
-      id: v.id,
-      name: v.name,
-      avatar: v.avatar,
-      status: v.status,
-      phoneNumber: v.phoneNumber,
-    }));
+    const users: User[] = await queryBuilder.getMany();
+    return users.map(
+      (user: User): IFriendResponse => ({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        status: user.status,
+        phoneNumber: user.phoneNumber,
+        birthDay: user.birthDay,
+      })
+    );
   }
 
   public async blockFriend(request: IFriendRequest, transactionId: string | number) {
@@ -306,16 +337,16 @@ export default class FriendService {
   }
 
   private async findFriendBy(userId: number, status: FriendStatus) {
-    return (await this.friendRepository
+    return await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
-      .where(
-        '(friend.targetId = :userId or friend.sourceId = :userId) and user.id != :userId and friend.status = :status',
-        {
-          userId: userId,
-          status: status,
-        }
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
+        })
       )
-      .getMany()) as any[];
+      .andWhere('user.id != :userId', { userId })
+      .andWhere('friend.status = :status', { status })
+      .getMany();
   }
 }
