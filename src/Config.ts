@@ -20,6 +20,7 @@ let config = {
   },
   topic: {
     pushNotification: 'notification-manager',
+    notification: 'notification',
   },
   clusterId: 'user',
   clientId: `user-${Utils.getEnvNum('ENV_NODE_ID', 0)}`,
@@ -51,6 +52,9 @@ let config = {
     loginTemporarilyLocked: 5, // times
     loginTemporarilyLockedTime: 1800000, //milliseconds
     timeStampHash: 30000, // milliseconds
+    template: {
+      deleteAccount: 'delete_account',
+    }
   },
   key: {
     jwt: {

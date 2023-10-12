@@ -2,7 +2,7 @@ import { Inject, Service } from 'typedi';
 import CacheService from './CacheService';
 import TokenService from './TokenService';
 import { IUserInfoRequest } from '../models/request/IUserInfoRequest';
-import { Errors, Logger, Utils } from 'common';
+import { Errors, Logger, Models, Utils } from 'common';
 import User from '../models/entities/User';
 import { Brackets, In, Repository } from 'typeorm';
 import IUserInfoResponse from '../models/response/IUserInfoResponse';
@@ -22,6 +22,8 @@ import { InjectRepository } from 'typeorm-typedi-extensions';
 import { getInstance } from './KafkaProducerService';
 import FriendService from './FriendService';
 import { ISearchUserRequest } from '../models/request/ISearchUser';
+import { ObjectMapper } from 'jackson-js';
+import Config from '../Config';
 
 @Service()
 export default class UserService {
@@ -158,7 +160,7 @@ export default class UserService {
         headers: request.headers,
       });
       this.cacheService.removeOtpKey(clams.id, transactionId);
-      this.sendMessageDeleteAccount(user);
+      this.sendMessageDeleteAccount(user, transactionId);
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -219,5 +221,21 @@ export default class UserService {
     return await bcrypt.compare(plaintextPassword, hash);
   }
 
-  private sendMessageDeleteAccount(user) {}
+  private sendMessageDeleteAccount(user, transactionId: string | number) {
+    const objectMapper: ObjectMapper = new ObjectMapper();
+    let notificationMessage: Models.NotificationMessage = new Models.NotificationMessage();
+    notificationMessage.setLocale('en');
+    notificationMessage.setMethod(Models.MethodEnum.EMAIL);
+    const emailConfiguration: Models.EmailConfiguration = new Models.EmailConfiguration();
+    emailConfiguration.setToList([user.email]);
+    emailConfiguration.setSubject('DELETING FOTEI ACCOUNT');
+    notificationMessage.setConfiguration(emailConfiguration, objectMapper);
+    const value = {
+      name: user.name,
+    };
+    const key: string = Config.app.template.deleteAccount;
+    const template: Map<string, Object> = new Map<string, any>([[key, value]]);
+    notificationMessage.setTemplate(template);
+    getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
+  }
 }
