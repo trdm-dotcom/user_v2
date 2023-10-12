@@ -153,9 +153,11 @@ export default class FriendService {
     return {};
   }
 
-  public async getRequestFriend(request: IDataRequest, transactionId: string | number) {
+  public async getRequestFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING);
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
+    const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.id,
@@ -168,9 +170,11 @@ export default class FriendService {
     );
   }
 
-  public async getFriend(request: IDataRequest, transactionId: string | number) {
+  public async getFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED);
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
+    const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.id,
@@ -183,8 +187,10 @@ export default class FriendService {
     );
   }
 
-  public async getBlockFriend(request: IDataRequest, transactionId: string | number) {
+  public async getBlockFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
     const result: any[] = await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
@@ -192,6 +198,8 @@ export default class FriendService {
         userId: userId,
         status: FriendStatus.BLOCKED,
       })
+      .skip(offset)
+      .take(limit)
       .getMany();
     return result.map(
       (v: any, i: number): IFriendResponse => ({
@@ -336,7 +344,32 @@ export default class FriendService {
       .execute();
   }
 
-  private async findFriendBy(userId: number, status: FriendStatus) {
+  public async internalListFriends(request: IDataRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const result: any[] = await this.friendRepository
+      .createQueryBuilder('friend')
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
+        })
+      )
+      .andWhere('user.id != :userId', { userId })
+      .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
+      .getMany();
+    return result.map(
+      (user: User): IFriendResponse => ({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        status: user.status,
+        phoneNumber: user.phoneNumber,
+        birthDay: user.birthDay,
+      })
+    );
+  }
+
+  private async findFriendBy(userId: number, status: FriendStatus, offset: number = 0, limit: number = 20) {
     return await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
@@ -347,6 +380,8 @@ export default class FriendService {
       )
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status })
+      .skip(offset)
+      .take(limit)
       .getMany();
   }
 }

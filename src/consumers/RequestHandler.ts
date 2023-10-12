@@ -115,6 +115,9 @@ export default class RequestHandler {
         case 'internal:/api/v1/user/search':
           return await this.userService.searchUser(message.data, message.transactionId);
 
+        case 'internal:/api/v1/user/friends':
+          return await this.friendService.internalListFriends(message.data, message.transactionId);
+
         default:
           throw new UriNotFound();
       }
