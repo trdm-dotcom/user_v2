@@ -234,7 +234,8 @@ export default class UserService {
       name: user.name,
     };
     const key: string = Config.app.template.deleteAccount;
-    const template: Map<string, Object> = new Map<string, any>([[key, value]]);
+    const template = {};
+    template[key] = value;
     notificationMessage.setTemplate(template);
     getInstance().sendMessage(transactionId.toString(), Config.topic.notification, '', notificationMessage);
   }
