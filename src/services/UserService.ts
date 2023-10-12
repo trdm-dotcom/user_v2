@@ -171,7 +171,7 @@ export default class UserService {
     return {};
   }
 
-  public async getUserInfos(request: any, transactionId: string | number) {
+  public async getUserInfos(request: any, transactionId: string | number): Promise<IUserInfoResponse[]> {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.userIds, 'userIds').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
