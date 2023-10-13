@@ -34,18 +34,16 @@ export default class BiometricService {
     invalidParams.throwErr();
     utils.validHash(request.hash, 'BIOMETRIC');
     await this.registerBiometricValidation(request.headers.token.userData.username, request.publicKey, transactionId);
-    const biometric = await this.manager.transaction(async (transactionalEntityManager) => {
-      const biometric: Biometric = new Biometric();
-      biometric.userid = request.headers.token.userData.id;
-      biometric.username = request.headers.token.userData.username;
-      biometric.publicKey = request.publicKey;
-      biometric.isDeleted = false;
-      biometric.status = BiometricStatus.ACTIVE;
-      biometric.deviceId = request.deviceId;
-      biometric.secretKey = request.secretKey;
-      return await transactionalEntityManager.save(biometric);
-    });
-    return { biometricId: biometric.id };
+    const biometric: Biometric = new Biometric();
+    biometric.userid = request.headers.token.userData.id;
+    biometric.username = request.headers.token.userData.username;
+    biometric.publicKey = request.publicKey;
+    biometric.isDeleted = false;
+    biometric.status = BiometricStatus.ACTIVE;
+    biometric.deviceId = request.deviceId;
+    biometric.secretKey = request.secretKey;
+    const enityBiometric: Biometric = await this.biometricRepository.save(biometric);
+    return { biometricId: enityBiometric.id };
   }
 
   public async queryBiometricStatus(request: IBiometricStatusRequest, transactionId: string | number) {
@@ -117,6 +115,7 @@ export default class BiometricService {
       id: user.id,
       status: user.status,
       name: user.name,
+      username: user.phoneNumber,
     };
     return response;
   }

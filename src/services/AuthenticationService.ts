@@ -54,6 +54,7 @@ export default class AuthenticationService {
       id: user.id,
       status: user.status,
       name: user.name,
+      username: user.phoneNumber,
     };
     return response;
   }
@@ -121,6 +122,7 @@ export default class AuthenticationService {
       id: entityUser.id,
       status: entityUser.status,
       name: entityUser.name,
+      username: entityUser.phoneNumber,
     };
     return response;
   }

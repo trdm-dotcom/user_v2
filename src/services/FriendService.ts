@@ -95,7 +95,7 @@ export default class FriendService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       const friend: Friend = await this.friendRepository.findOne({
-        sourceId: request.friend as number,
+        id: request.friend as number,
         status: FriendStatus.PENDING,
       });
       if (friend == null) {
@@ -223,28 +223,32 @@ export default class FriendService {
       .leftJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
       .where(
         new Brackets((qb) => {
+          qb.where('user.id != :userId', { userId });
+        })
+      );
+    if (request.search != null) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
           qb.where('user.name like :search', { search: `%${request.search}%` })
             .orWhere('user.email like :search', { search: `%${request.search}%` })
             .orWhere('user.phoneNumber like :search', { search: `%${request.search}%` });
         })
-      )
-      .andWhere(
-        new Brackets((qb) => {
-          qb.where('friend.sourceId != :userId', { userId }).andWhere('friend.targetId != :userId', { userId });
-        })
       );
+    }
     if (request.phone != null) {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
-    const users: User[] = await queryBuilder.getMany();
-    return users.map(
-      (user: User): IFriendResponse => ({
+    const result: any[] = await queryBuilder.getMany();
+    console.log(result);
+    return result.map(
+      (user: any): IFriendResponse => ({
         id: user.id,
         name: user.name,
         avatar: user.avatar,
         status: user.status,
         phoneNumber: user.phoneNumber,
         birthDay: user.birthDay,
+        statusFriend: user['friend_status'],
       })
     );
   }

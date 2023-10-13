@@ -70,7 +70,7 @@ export default class RequestHandler {
         case 'delete:/api/v1/user':
           return await this.userService.disableUser(message.data, message.transactionId);
 
-        case 'post:/api/v1/user/friend':
+        case 'post:/api/v1/user/friend/request':
           return await this.friendService.requestFriend(message.data, message.transactionId);
 
         case 'put:/api/v1/user/friend':
