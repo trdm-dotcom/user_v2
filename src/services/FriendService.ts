@@ -39,7 +39,7 @@ export default class FriendService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       const user: User = await this.userRepository.findOne({
-        phoneNumber: request.friend as string,
+        id: request.friend,
         status: UserStatus.ACTIVE,
       });
       if (user == null) {
@@ -95,7 +95,7 @@ export default class FriendService {
         Logger.warn(`${transactionId} waiting do progess`);
       }
       const friend: Friend = await this.friendRepository.findOne({
-        id: request.friend as number,
+        id: request.friend,
         status: FriendStatus.PENDING,
       });
       if (friend == null) {
@@ -135,7 +135,7 @@ export default class FriendService {
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
-    const friend: Friend = await this.friendRepository.findOne(request.friend as number, {
+    const friend: Friend = await this.friendRepository.findOne(request.friend, {
       where: {
         status: FriendStatus.BLOCKED,
       },
@@ -146,7 +146,7 @@ export default class FriendService {
     if (friend.sourceId != userId && friend.targetId != userId) {
       throw new Errors.GeneralError(Constants.USER_DONT_HAVE_PERMISSION);
     }
-    this.friendRepository.delete({ id: request.friend as number });
+    this.friendRepository.delete({ id: request.friend });
     getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation/{roomId}', {
       recipientId: request.friend,
     });
@@ -267,7 +267,7 @@ export default class FriendService {
       }
       this.cacheService.addInprogessValidate(request.friend, Constants.BLOCK_INPROGESS, transactionId);
       const user: User = await this.userRepository.findOne({
-        id: request.friend as number,
+        id: request.friend,
         status: UserStatus.ACTIVE,
       });
       if (user == null) {
@@ -314,7 +314,7 @@ export default class FriendService {
   public async unblockFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const friend: Friend = await this.friendRepository.findOne({
-      id: request.friend as number,
+      id: request.friend,
       sourceId: userId,
       status: FriendStatus.BLOCKED,
     });
@@ -327,17 +327,18 @@ export default class FriendService {
     return {};
   }
 
-  public async checkFriend(request: any, transactionId: string | number) {
+  public async checkFriend(request: IFriendRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
-    const friend: Friend = await this.friendRepository.findOne({
-      sourceId: userId,
-      targetId: request.friend as number,
-      status: FriendStatus.FRIENDED,
-    });
-    return { isFriend: friend != null };
+    const friends: number = await this.friendRepository
+      .createQueryBuilder('friend')
+      .where("CONCAT(friend.sourceId, '_', friend.targetId) in (:concatid)", {
+        concatid: [`${userId}_${request.friend}`, `${request.friend}_${userId}`],
+      })
+      .getCount();
+    return { isFriend: friends > 0 };
   }
 
   public async deleteAllFriend(userId: number) {
