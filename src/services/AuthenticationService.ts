@@ -50,10 +50,16 @@ export default class AuthenticationService {
     if (!(await this.comparePassword(password, user.password))) {
       throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
     }
-    return {};
+    const response: ILoginResponse = {
+      id: user.id,
+      status: user.status,
+      name: user.name,
+      username: user.phoneNumber,
+    };
+    return response;
   }
 
-  public async register(request: IRegisterRequest, transactionId: string | number): Promise<ILoginResponse> {
+  public async register(request: IRegisterRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.name, 'name').setRequire().throwValid(invalidParams);
     Utils.validate(request.email, 'email').setRequire().throwValid(invalidParams);
@@ -79,7 +85,6 @@ export default class AuthenticationService {
       throw new Errors.GeneralError(Constants.NAME_NOT_MATCHED_POLICY);
     }
     const clams = await this.tokenService.validateOtpKey(request.otpKey, transactionId);
-    let entityUser: User;
     try {
       if (
         await this.cacheService.findInprogessValidate(request.phoneNumber, Constants.REGISTER_INPROGESS, transactionId)
@@ -100,7 +105,7 @@ export default class AuthenticationService {
       user.phoneNumber = request.phoneNumber;
       user.status = UserStatus.ACTIVE;
       user.phoneVerified = true;
-      entityUser = await this.userRepository.save(user);
+      await this.userRepository.save(user);
       await this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
@@ -112,13 +117,7 @@ export default class AuthenticationService {
     } finally {
       this.cacheService.removeInprogessValidate(request.phoneNumber, Constants.REGISTER_INPROGESS, transactionId);
     }
-    const response: ILoginResponse = {
-      id: entityUser.id,
-      status: entityUser.status,
-      name: entityUser.name,
-      username: entityUser.phoneNumber,
-    };
-    return response;
+    return {};
   }
 
   public async findAndValidUser(request: ILoginRequest, transactionId: string | number): Promise<User> {
