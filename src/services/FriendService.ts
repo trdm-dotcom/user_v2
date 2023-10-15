@@ -239,7 +239,6 @@ export default class FriendService {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
     const result: any[] = await queryBuilder.getMany();
-    console.log(result);
     return result.map(
       (user: any): IFriendResponse => ({
         id: user.id,

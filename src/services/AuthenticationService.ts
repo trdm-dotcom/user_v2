@@ -36,7 +36,7 @@ export default class AuthenticationService {
   );
   private EMAIL_REGEX = new RegExp('^(?<!\\.)[\\w-.]+@([\\w-]+.)+[\\w-]{2,4}$(?<!\\.)');
 
-  public async login(request: ILoginRequest, transactionId: string | number): Promise<ILoginResponse> {
+  public async login(request: ILoginRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.username, 'username').setRequire().throwValid(invalidParams);
     Utils.validate(request.password, 'password').setRequire().throwValid(invalidParams);
@@ -50,13 +50,7 @@ export default class AuthenticationService {
     if (!(await this.comparePassword(password, user.password))) {
       throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
     }
-    const response: ILoginResponse = {
-      id: user.id,
-      status: user.status,
-      name: user.name,
-      username: user.phoneNumber,
-    };
-    return response;
+    return {};
   }
 
   public async register(request: IRegisterRequest, transactionId: string | number): Promise<ILoginResponse> {

@@ -67,6 +67,7 @@ export default class SocialAuthenticateService {
             id: user.id,
             status: user.status,
             name: user.name,
+            username: user.phoneNumber,
           };
           return response;
         } else {
@@ -127,6 +128,7 @@ export default class SocialAuthenticateService {
             id: user.id,
             status: user.status,
             name: user.name,
+            username: user.phoneNumber,
           };
           return response;
         } else {
