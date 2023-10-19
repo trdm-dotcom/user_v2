@@ -23,7 +23,6 @@
     "jsonwebtoken": "^9.0.0",
     "kafka-common": "file:../kafka-common",
     "moment": "^2.29.4",
-    "mongodb": "^3.6.0",
     "mysql": "^2.18.1",
     "redis": "^4.1.0",
     "reflect-metadata": "^0.1.13",
