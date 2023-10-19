@@ -160,12 +160,14 @@ export default class FriendService {
     const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.id,
-        name: v.name,
-        status: v.status,
-        avatar: v.avatar,
-        phoneNumber: v.phoneNumber,
-        birthDay: v.birthDay,
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.friend_id,
+        statusFriend: v.friend_status,
       })
     );
   }
@@ -177,12 +179,14 @@ export default class FriendService {
     const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.id,
-        name: v.name,
-        status: v.status,
-        avatar: v.avatar,
-        phoneNumber: v.phoneNumber,
-        birthDay: v.birthDay,
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.friend_id,
+        statusFriend: v.friend_status,
       })
     );
   }
@@ -200,15 +204,17 @@ export default class FriendService {
       })
       .skip(offset)
       .take(limit)
-      .getMany();
+      .getRawMany();
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.id,
-        name: v.name,
-        status: v.status,
-        avatar: v.avatar,
-        phoneNumber: v.phoneNumber,
-        birthDay: v.birthDay,
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.friend_id,
+        statusFriend: v.friend_status,
       })
     );
   }
@@ -238,16 +244,17 @@ export default class FriendService {
     if (request.phone != null) {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
-    const result: any[] = await queryBuilder.getMany();
+    const result: any[] = await queryBuilder.getRawMany();
     return result.map(
-      (user: any): IFriendResponse => ({
-        id: user.id,
-        name: user.name,
-        avatar: user.avatar,
-        status: user.status,
-        phoneNumber: user.phoneNumber,
-        birthDay: user.birthDay,
-        statusFriend: user['friend_status'],
+      (v: any, i: number): IFriendResponse => ({
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.friend_id,
+        statusFriend: v.friend_status,
       })
     );
   }
@@ -360,15 +367,17 @@ export default class FriendService {
       )
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
-      .getMany();
+      .getRawMany();
     return result.map(
-      (user: User): IFriendResponse => ({
-        id: user.id,
-        name: user.name,
-        avatar: user.avatar,
-        status: user.status,
-        phoneNumber: user.phoneNumber,
-        birthDay: user.birthDay,
+      (v: any, i: number): IFriendResponse => ({
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.friend_id,
+        statusFriend: v.friend_status,
       })
     );
   }
@@ -386,6 +395,6 @@ export default class FriendService {
       .andWhere('friend.status = :status', { status })
       .skip(offset)
       .take(limit)
-      .getMany();
+      .getRawMany();
   }
 }
