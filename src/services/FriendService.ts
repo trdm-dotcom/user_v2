@@ -61,7 +61,7 @@ export default class FriendService {
       friend.sourceId = userId;
       friend.targetId = user.id;
       friend.status = FriendStatus.PENDING;
-      await this.friendRepository.save(friend);
+      const friendEntity: Friend = await this.friendRepository.save(friend);
       utils.sendMessagePushNotification(
         transactionId.toString(),
         friend.targetId,
@@ -71,6 +71,9 @@ export default class FriendService {
         true,
         FirebaseType.TOKEN
       );
+      return {
+        id: friendEntity.id,
+      };
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -79,7 +82,6 @@ export default class FriendService {
         throw new Errors.GeneralError();
       }
     }
-    return {};
   }
 
   public async acceptFriend(request: IFriendRequest, transactionId: string | number) {
@@ -135,11 +137,10 @@ export default class FriendService {
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
-    const friend: Friend = await this.friendRepository.findOne(request.friend, {
-      where: {
-        status: FriendStatus.BLOCKED,
-      },
-    });
+    const friend: Friend = await this.friendRepository
+      .createQueryBuilder('friend')
+      .where('friend.id = :id and friend.status != :status', { id: request.friend, status: FriendStatus.BLOCKED })
+      .getOne();
     if (friend == null) {
       throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
     }
