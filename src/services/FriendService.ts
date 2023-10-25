@@ -31,6 +31,7 @@ export default class FriendService {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
+    const name: string = request.headers.token.userData.name;
     try {
       while (
         (await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)) ||
@@ -63,13 +64,16 @@ export default class FriendService {
       friend.status = FriendStatus.PENDING;
       const friendEntity: Friend = await this.friendRepository.save(friend);
       utils.sendMessagePushNotification(
-        transactionId.toString(),
+        `${transactionId}`,
         friend.targetId,
-        'request friend',
-        `${request.headers.token.userData.id} sent you a friend request`,
+        `${name} sent you a friend request`,
         'push_up',
+        FirebaseType.TOKEN,
         true,
-        FirebaseType.TOKEN
+        null,
+        'REQUEST',
+        friendEntity.id,
+        userId
       );
       return {
         id: friendEntity.id,
@@ -89,6 +93,7 @@ export default class FriendService {
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
+    const name: string = request.headers.token.userData.name;
     try {
       while (
         (await this.cacheService.findInprogessValidate(request.friend, Constants.DISABLE_INPROGESS, transactionId)) ||
@@ -113,13 +118,12 @@ export default class FriendService {
         }
       );
       utils.sendMessagePushNotification(
-        transactionId.toString(),
+        `${transactionId}`,
         friend.sourceId,
-        'accepted request',
-        `${request.headers.token.userData.id} accepted your friend request`,
+        `${name} accepted your friend request`,
         'push_up',
-        true,
-        FirebaseType.TOKEN
+        FirebaseType.TOKEN,
+        false
       );
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
@@ -148,7 +152,7 @@ export default class FriendService {
       throw new Errors.GeneralError(Constants.USER_DONT_HAVE_PERMISSION);
     }
     this.friendRepository.delete({ id: request.friend });
-    getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation/{roomId}', {
+    getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation', {
       recipientId: request.friend,
     });
     return {};
@@ -303,7 +307,7 @@ export default class FriendService {
         friend.status = FriendStatus.BLOCKED;
         await this.friendRepository.save(friend);
       }
-      getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation/{roomId}', {
+      getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation', {
         recipientId: request.friend,
       });
     } catch (error) {

@@ -113,21 +113,27 @@ export function convertToHashObject(hash: string) {
 export function sendMessagePushNotification(
   msgId: string,
   userId: number,
-  title: string,
   content: string,
   template: string,
-  isSave: boolean,
   type: Models.FirebaseType,
+  isSave: boolean,
+  title?: string,
+  notificationType?: string,
+  sourceId?: any,
+  authorId?: any,
   condition?: string,
   token?: string
 ) {
   getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
     userId: userId,
-    title: title,
     content: content,
     template: template,
-    isSave: isSave,
     type: type,
+    isSave: isSave,
+    title: title,
+    sourceId: sourceId,
+    notificationType: notificationType,
+    authorId: authorId,
     condition: condition,
     token: token,
   });

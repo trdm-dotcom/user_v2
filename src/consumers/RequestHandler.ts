@@ -106,7 +106,7 @@ export default class RequestHandler {
         case 'delete:/api/v1/user/bio/cancelBiometricRegister':
           return await this.biometricService.cancelBiometricRegister(message.data, message.transactionId);
 
-        case 'internal:/api/v1/user/checkFriend':
+        case 'post:/api/v1/user/checkFriend':
           return await this.friendService.checkFriend(message.data, message.transactionId);
 
         case 'internal:/api/v1/userInfos':
