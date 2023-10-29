@@ -231,7 +231,12 @@ export default class FriendService {
     const userId: number = request.headers.token.userData.id;
     const queryBuilder: SelectQueryBuilder<any> = this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .leftJoinAndSelect(
+        'friend',
+        'friend',
+        'user.id = friend.sourceId OR user.id = friend.targetId AND (friend.sourceId = :userId OR friend.targetId = :userId)',
+        { userId }
+      )
       .where(
         new Brackets((qb) => {
           qb.where('user.id != :userId', { userId });
@@ -258,8 +263,8 @@ export default class FriendService {
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        friendId: v.friend_id,
-        statusFriend: v.friend_status,
+        friendId: v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_id : null,
+        statusFriend:  v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_status : null,
       })
     );
   }
