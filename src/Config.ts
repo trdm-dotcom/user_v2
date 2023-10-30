@@ -54,7 +54,7 @@ let config = {
     timeStampHash: 30000, // milliseconds
     template: {
       deleteAccount: 'delete_account',
-    }
+    },
   },
   key: {
     jwt: {

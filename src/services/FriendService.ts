@@ -161,11 +161,11 @@ export default class FriendService {
   public async getRequestFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
     const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.user_id,
+        id: v.friend_id,
         name: v.user_name,
         status: v.user_status,
         avatar: v.user_avatar,
@@ -173,6 +173,7 @@ export default class FriendService {
         birthDay: v.user_birth_day,
         friendId: v.friend_id,
         statusFriend: v.friend_status,
+        isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
     );
   }
@@ -180,11 +181,11 @@ export default class FriendService {
   public async getFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
     const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.user_id,
+        id: v.friend_id,
         name: v.user_name,
         status: v.user_status,
         avatar: v.user_avatar,
@@ -192,6 +193,7 @@ export default class FriendService {
         birthDay: v.user_birth_day,
         friendId: v.friend_id,
         statusFriend: v.friend_status,
+        isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
     );
   }
@@ -199,16 +201,16 @@ export default class FriendService {
   public async getBlockFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber - 1, 0) * limit;
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
     const result: any[] = await this.friendRepository
       .createQueryBuilder('friend')
-      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
-      .where('friend.targetId = :userId and user.id != :userId and friend.status = :status', {
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
+      .where('user.id = :userId and friend.status = :status', {
         userId: userId,
         status: FriendStatus.BLOCKED,
       })
-      .skip(offset)
-      .take(limit)
+      .offset(offset)
+      .limit(limit)
       .getRawMany();
     return result.map(
       (v: any, i: number): IFriendResponse => ({
@@ -220,6 +222,7 @@ export default class FriendService {
         birthDay: v.user_birth_day,
         friendId: v.friend_id,
         statusFriend: v.friend_status,
+        isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
     );
   }
@@ -229,12 +232,14 @@ export default class FriendService {
     transactionId: string | number
   ): Promise<IFriendResponse[]> {
     const userId: number = request.headers.token.userData.id;
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
     const queryBuilder: SelectQueryBuilder<any> = this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect(
         'friend',
         'friend',
-        'user.id = friend.sourceId OR user.id = friend.targetId AND (friend.sourceId = :userId OR friend.targetId = :userId)',
+        'user.id = friend.sourceId OR user.id = friend.targetId AND (friend.sourceId != :userId OR friend.targetId != :userId)',
         { userId }
       )
       .where(
@@ -254,6 +259,7 @@ export default class FriendService {
     if (request.phone != null) {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
+    queryBuilder.offset(offset).limit(limit);
     const result: any[] = await queryBuilder.getRawMany();
     return result.map(
       (v: any, i: number): IFriendResponse => ({
@@ -263,8 +269,9 @@ export default class FriendService {
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
+        isAccept: userId == v.friend_targetId,
         friendId: v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_id : null,
-        statusFriend:  v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_status : null,
+        statusFriend: v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_status : null,
       })
     );
   }
@@ -388,6 +395,7 @@ export default class FriendService {
         birthDay: v.user_birth_day,
         friendId: v.friend_id,
         statusFriend: v.friend_status,
+        isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
     );
   }
@@ -403,8 +411,8 @@ export default class FriendService {
       )
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status })
-      .skip(offset)
-      .take(limit)
+      .offset(offset)
+      .limit(limit)
       .getRawMany();
   }
 }

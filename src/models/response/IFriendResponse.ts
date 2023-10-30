@@ -4,4 +4,5 @@ import IUserInfoResponse from './IUserInfoResponse';
 export default interface IFriendResponse extends IUserInfoResponse {
   statusFriend: FriendStatus;
   friendId: number;
+  isAccept: boolean;
 }
