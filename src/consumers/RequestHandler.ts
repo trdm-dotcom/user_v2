@@ -106,17 +106,17 @@ export default class RequestHandler {
         case 'delete:/api/v1/user/bio/cancelBiometricRegister':
           return await this.biometricService.cancelBiometricRegister(message.data, message.transactionId);
 
-        case 'post:/api/v1/user/checkFriend':
+        case 'get:/api/v1/user/checkFriend':
           return await this.friendService.checkFriend(message.data, message.transactionId);
+        
+        case 'get:/api/v1/user/friendOfUser':
+          return await this.friendService.getFriendOfUser(message.data, message.transactionId);
 
         case 'internal:/api/v1/userInfos':
           return await this.userService.getUserInfos(message.data, message.transactionId);
 
         case 'internal:/api/v1/user/search':
           return await this.userService.searchUser(message.data, message.transactionId);
-
-        case 'internal:/api/v1/user/friends':
-          return await this.friendService.internalListFriends(message.data, message.transactionId);
 
         default:
           throw new UriNotFound();

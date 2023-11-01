@@ -8,12 +8,13 @@ import * as utils from '../utils/Utils';
 import Constants from '../Constants';
 import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
-import { FirebaseType, IDataRequest } from 'common/build/src/modules/models';
+import { FirebaseType } from 'common/build/src/modules/models';
 import IFriendResponse from '../models/response/IFriendResponse';
 import { ISuggestFriendRequest } from '../models/request/ISuggestFriendRequest';
 import { InjectManager, InjectRepository } from 'typeorm-typedi-extensions';
 import CacheService from './CacheService';
 import { getInstance } from './KafkaProducerService';
+import IUserInfoResponse from '../models/response/IUserInfoResponse';
 
 @Service()
 export default class FriendService {
@@ -171,7 +172,7 @@ export default class FriendService {
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        friendId: v.friend_id,
+        friendId: v.user_id,
         statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
@@ -191,7 +192,7 @@ export default class FriendService {
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        friendId: v.friend_id,
+        friendId: v.user_id,
         statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
@@ -220,7 +221,7 @@ export default class FriendService {
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        friendId: v.friend_id,
+        friendId: v.user_id,
         statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
@@ -230,21 +231,23 @@ export default class FriendService {
   public async getSuggestByContact(
     request: ISuggestFriendRequest,
     transactionId: string | number
-  ): Promise<IFriendResponse[]> {
+  ): Promise<IUserInfoResponse[]> {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+
+    const subQuery = this.friendRepository
+      .createQueryBuilder('friend')
+      .select('CASE WHEN friend.sourceId = :userId THEN friend.targetId ELSE friend.sourceId END', 'user_id')
+      .distinct()
+      .where('friend.sourceId = :userId OR friend.targetId = :userId', { userId })
+      .getQuery();
     const queryBuilder: SelectQueryBuilder<any> = this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect(
-        'friend',
-        'friend',
-        'user.id = friend.sourceId OR user.id = friend.targetId AND (friend.sourceId != :userId OR friend.targetId != :userId)',
-        { userId }
-      )
+      .leftJoin(`(${subQuery})`, 'user_friend', 'user.id = user_friend.user_id')
       .where(
         new Brackets((qb) => {
-          qb.where('user.id != :userId', { userId });
+          qb.where('user.id != :userId', { userId }).andWhere('user_friend.user_id IS NULL');
         })
       );
     if (request.search != null) {
@@ -262,16 +265,13 @@ export default class FriendService {
     queryBuilder.offset(offset).limit(limit);
     const result: any[] = await queryBuilder.getRawMany();
     return result.map(
-      (v: any, i: number): IFriendResponse => ({
+      (v: any, i: number): IUserInfoResponse => ({
         id: v.user_id,
         name: v.user_name,
         status: v.user_status,
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        isAccept: userId == v.friend_targetId,
-        friendId: v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_id : null,
-        statusFriend: v.friend_targetId == userId || v.friend_sourceId == userId ? v.friend_status : null,
       })
     );
   }
@@ -372,28 +372,23 @@ export default class FriendService {
       .execute();
   }
 
-  public async internalListFriends(request: IDataRequest, transactionId: string | number) {
+  public async getFriendOfUser(request: IFriendRequest, transactionId: string | number) {
+    const invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
-    const result: any[] = await this.friendRepository
-      .createQueryBuilder('friend')
-      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
-      .andWhere(
-        new Brackets((qb) => {
-          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
-        })
-      )
-      .andWhere('user.id != :userId', { userId })
-      .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
-      .getRawMany();
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const result: any[] = await this.findFriendBy(request.friend, FriendStatus.FRIENDED, offset, limit);
     return result.map(
       (v: any, i: number): IFriendResponse => ({
-        id: v.user_id,
+        id: v.friend_id,
         name: v.user_name,
         status: v.user_status,
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
-        friendId: v.friend_id,
+        friendId: v.user_id,
         statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
       })
