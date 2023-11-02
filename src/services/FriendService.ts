@@ -14,7 +14,6 @@ import { ISuggestFriendRequest } from '../models/request/ISuggestFriendRequest';
 import { InjectManager, InjectRepository } from 'typeorm-typedi-extensions';
 import CacheService from './CacheService';
 import { getInstance } from './KafkaProducerService';
-import IUserInfoResponse from '../models/response/IUserInfoResponse';
 
 @Service()
 export default class FriendService {
@@ -173,8 +172,8 @@ export default class FriendService {
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
         friendId: v.user_id,
-        statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
+        friendStatus: v.friend_status,
       })
     );
   }
@@ -193,8 +192,8 @@ export default class FriendService {
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
         friendId: v.user_id,
-        statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
+        friendStatus: v.friend_status,
       })
     );
   }
@@ -222,8 +221,8 @@ export default class FriendService {
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
         friendId: v.user_id,
-        statusFriend: v.friend_status,
         isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
+        friendStatus: v.friend_status,
       })
     );
   }
@@ -231,7 +230,7 @@ export default class FriendService {
   public async getSuggestByContact(
     request: ISuggestFriendRequest,
     transactionId: string | number
-  ): Promise<IUserInfoResponse[]> {
+  ): Promise<IFriendResponse[]> {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
@@ -239,12 +238,14 @@ export default class FriendService {
     const subQuery = this.friendRepository
       .createQueryBuilder('friend')
       .select('CASE WHEN friend.sourceId = :userId THEN friend.targetId ELSE friend.sourceId END', 'user_id')
+      .addSelect('friend.status', 'friend_status')
       .distinct()
       .where('friend.sourceId = :userId OR friend.targetId = :userId', { userId })
       .getQuery();
     const queryBuilder: SelectQueryBuilder<any> = this.userRepository
       .createQueryBuilder('user')
       .leftJoin(`(${subQuery})`, 'user_friend', 'user.id = user_friend.user_id')
+      .addSelect('user_friend.friend_status', 'friend_status')
       .where(
         new Brackets((qb) => {
           qb.where('user.id != :userId', { userId }).andWhere('user_friend.user_id IS NULL');
@@ -265,13 +266,77 @@ export default class FriendService {
     queryBuilder.offset(offset).limit(limit);
     const result: any[] = await queryBuilder.getRawMany();
     return result.map(
-      (v: any, i: number): IUserInfoResponse => ({
+      (v: any, i: number): IFriendResponse => ({
         id: v.user_id,
         name: v.user_name,
         status: v.user_status,
         avatar: v.user_avatar,
         phoneNumber: v.user_phone_number,
         birthDay: v.user_birth_day,
+        friendId: v.user_id,
+        isAccept: false,
+        friendStatus: v.friend_status,
+      })
+    );
+  }
+
+  public async getFriendOfUser(request: IFriendRequest, transactionId: string | number) {
+    const invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
+    const userId: number = request.headers.token.userData.id;
+    const friend: number = Number(request.friend);
+    const subQuerySource = this.friendRepository
+      .createQueryBuilder('friend')
+      .select('IF(friend.sourceId = :friend, friend.targetId, friend.sourceId)', 'user_id')
+      .distinct()
+      .where(
+        '(friend.sourceId = :friend OR friend.targetId = :friend) AND friend.status = :status AND (friend.sourceId != :userId AND friend.targetId != :userId)'
+      )
+      .getQuery();
+
+    const subQueryTarget = this.friendRepository
+      .createQueryBuilder('friend')
+      .select('IF(friend.sourceId = :userId, friend.targetId, friend.sourceId)', 'user_id')
+      .addSelect('friend.status', 'friend_status')
+      .distinct()
+      .where(
+        '(friend.sourceId = :userId OR friend.targetId = :userId) AND friend.status = :status AND (friend.sourceId != :friend AND friend.targetId != :friend)'
+      )
+      .getQuery();
+
+    const queryBuilder: SelectQueryBuilder<any> = this.userRepository
+      .createQueryBuilder('user')
+      .innerJoin(`(${subQuerySource})`, 'user_friend_source', 'user.id = user_friend_source.user_id', {
+        userId,
+        friend,
+        status: FriendStatus.FRIENDED,
+      })
+      .leftJoin(
+        `(${subQueryTarget})`,
+        'user_friend_target',
+        'user_friend_source.user_id = user_friend_target.user_id',
+        { userId, friend, status: FriendStatus.FRIENDED }
+      )
+      .addSelect('user_friend_target.user_id IS NOT NULL', 'is_friend')
+      .addSelect('user_friend_target.friend_status', 'friend_status')
+      .where('user_friend_target.friend_status != :blockStatus OR user_friend_target.friend_status IS NULL', {
+        blockStatus: FriendStatus.BLOCKED,
+      });
+
+    const result: any[] = await queryBuilder.getRawMany();
+
+    return result.map(
+      (v: any, i: number): IFriendResponse => ({
+        id: v.user_id,
+        name: v.user_name,
+        status: v.user_status,
+        avatar: v.user_avatar,
+        phoneNumber: v.user_phone_number,
+        birthDay: v.user_birth_day,
+        friendId: v.user_id,
+        isAccept: v.is_friend,
+        friendStatus: v.friend_status,
       })
     );
   }
@@ -370,29 +435,6 @@ export default class FriendService {
       .delete()
       .where('sourceId = :userId or targetId = :userId', { userId: userId })
       .execute();
-  }
-
-  public async getFriendOfUser(request: IFriendRequest, transactionId: string | number) {
-    const invalidParams = new Errors.InvalidParameterError();
-    Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
-    invalidParams.throwErr();
-    const userId: number = request.headers.token.userData.id;
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
-    const result: any[] = await this.findFriendBy(request.friend, FriendStatus.FRIENDED, offset, limit);
-    return result.map(
-      (v: any, i: number): IFriendResponse => ({
-        id: v.friend_id,
-        name: v.user_name,
-        status: v.user_status,
-        avatar: v.user_avatar,
-        phoneNumber: v.user_phone_number,
-        birthDay: v.user_birth_day,
-        friendId: v.user_id,
-        statusFriend: v.friend_status,
-        isAccept: userId == v.friend_targetId && v.friend_status == FriendStatus.PENDING,
-      })
-    );
   }
 
   private async findFriendBy(userId: number, status: FriendStatus, offset: number = 0, limit: number = 20) {
