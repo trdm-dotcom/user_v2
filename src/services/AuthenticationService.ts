@@ -32,9 +32,9 @@ export default class AuthenticationService {
   private PASSWORD_REGEX = new RegExp('^(?<!\\.)(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[\\W,_])[.!-~]{6,}$(?<!\\.)');
   private PHONE_NUMBER_REGEX = new RegExp('^(?<!\\.)\\d{10}$(?<!\\.)');
   private FULLNAME_REGEX = new RegExp(
-    '^(?<!\\.)[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹs]*$(?<!\\.)'
+    '[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸ]+'
   );
-  private EMAIL_REGEX = new RegExp('^(?<!\\.)[\\w-.]+@([\\w-]+.)+[\\w-]{2,4}$(?<!\\.)');
+  // private EMAIL_REGEX = new RegExp('^(?<!\\.)[\\w-.]+@([\\w-]+.)+[\\w-]{2,4}$(?<!\\.)');
 
   public async login(request: ILoginRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
@@ -72,9 +72,9 @@ export default class AuthenticationService {
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
       : request.password;
-    if (!this.EMAIL_REGEX.test(request.email)) {
-      throw new Errors.GeneralError(Constants.EMAIL_NOT_MATCHED_POLICY);
-    }
+    // if (!this.EMAIL_REGEX.test(request.email)) {
+    //   throw new Errors.GeneralError(Constants.EMAIL_NOT_MATCHED_POLICY);
+    // }
     if (!this.PHONE_NUMBER_REGEX.test(request.phoneNumber)) {
       throw new Errors.GeneralError(Constants.PHONE_NUMBER_NOT_MATCHED_POLICY);
     }
@@ -104,7 +104,6 @@ export default class AuthenticationService {
       user.password = await this.hashPassword(password);
       user.phoneNumber = request.phoneNumber;
       user.status = UserStatus.ACTIVE;
-      user.phoneVerified = true;
       await this.userRepository.save(user);
       await this.cacheService.removeOtpKey(clams.id, transactionId);
     } catch (error) {

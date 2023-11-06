@@ -9,7 +9,6 @@ import IUserInfoResponse from '../models/response/IUserInfoResponse';
 import { IUpdateUserInfoRequest } from '../models/request/IUpdateUserInfoRequest';
 import IResultResponse from '../models/response/IResultResponse';
 import Constants from '../Constants';
-import * as moment from 'moment';
 import * as utils from '../utils/Utils';
 import config from '../Config';
 import IDisableUserRequest from '../models/request/IDisableUserRequest';
@@ -36,7 +35,7 @@ export default class UserService {
   @InjectRepository(User)
   private userRepository: Repository<User>;
   private FULLNAME_REGEX = new RegExp(
-    '^(?<!\\.)[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹs]*$(?<!\\.)'
+    '[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸ]+'
   );
 
   public async getUserInfo(request: IUserInfoRequest, transactionId: string | number) {
@@ -47,9 +46,10 @@ export default class UserService {
       status: user.status,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      birthDay: user.birthDay,
+      about: user.about,
       avatar: user.avatar,
       id: user.id,
+      privateMode: user.privateMode,
     };
     return response;
   }
@@ -72,7 +72,7 @@ export default class UserService {
         { id: userId },
         {
           name: request.name,
-          birthDay: moment(request.birthDay, 'YYYY-MM-DD').toDate(),
+          about: request.about,
           avatar: request.avatar,
         }
       );
@@ -187,9 +187,10 @@ export default class UserService {
         status: v.status,
         email: v.email,
         phoneNumber: v.phoneNumber,
-        birthDay: v.birthDay,
+        about: v.about,
         avatar: v.avatar,
         id: v.id,
+        privateMode: v.privateMode,
       })
     );
   }
@@ -208,11 +209,13 @@ export default class UserService {
     return users.map(
       (user: User): IUserInfoResponse => ({
         id: user.id,
+        email: user.email,
         name: user.name,
         avatar: user.avatar,
         status: user.status,
         phoneNumber: user.phoneNumber,
-        birthDay: user.birthDay,
+        about: user.about,
+        privateMode: user.privateMode,
       })
     );
   }

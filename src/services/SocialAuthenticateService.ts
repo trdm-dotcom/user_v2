@@ -77,9 +77,7 @@ export default class SocialAuthenticateService {
       return await this.manager.transaction(async (transactionalEntityManager) => {
         let user: User = new User();
         user.name = info.getName();
-        user.birthDay = Utils.convertStringToDate(info.getBirthday());
         user.status = UserStatus.ACTIVE;
-        user.phoneVerified = true;
         user.password = await this.hashPassword(utils.randomAlphabetic(10));
         user.avatar = info.getAvatar();
         user = await transactionalEntityManager.save(user);
@@ -139,7 +137,6 @@ export default class SocialAuthenticateService {
         let user: User = new User();
         user.name = info.getName();
         user.status = UserStatus.ACTIVE;
-        user.phoneVerified = true;
         user.password = await this.hashPassword(utils.randomAlphabetic(10));
         user = await transactionalEntityManager.save(user);
         let social: Social = new Social();

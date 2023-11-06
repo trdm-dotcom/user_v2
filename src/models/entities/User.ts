@@ -13,8 +13,8 @@ export default class User {
   phoneNumber: string;
   @Column({ name: 'email', unique: true })
   email: string;
-  @Column({ name: 'phone_verified', default: false })
-  phoneVerified: boolean;
+  @Column({ name: 'private_mode', default: false })
+  privateMode: boolean;
   @Column({
     name: 'status',
     type: 'enum',
@@ -22,8 +22,8 @@ export default class User {
     default: UserStatus.ACTIVE,
   })
   status: UserStatus;
-  @Column({ name: 'birth_day', nullable: true })
-  birthDay: Date;
+  @Column({ name: 'about', nullable: true })
+  about: string;
   @Column({ name: 'avatar', nullable: true })
   avatar: string;
   @CreateDateColumn({ name: 'created_at' })
