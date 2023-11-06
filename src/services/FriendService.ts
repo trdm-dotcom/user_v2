@@ -151,7 +151,7 @@ export default class FriendService {
       throw new Errors.GeneralError(Constants.USER_DONT_HAVE_PERMISSION);
     }
     this.friendRepository.delete({ id: request.friend });
-    getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation', {
+    getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
       recipientId: request.friend,
     });
     return {};
@@ -385,7 +385,7 @@ export default class FriendService {
         friend.status = FriendStatus.BLOCKED;
       }
       friend = await this.friendRepository.save(friend);
-      getInstance().sendMessage(`${transactionId}`, 'core', 'delete:/api/v1/chat/conversation', {
+      getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
         recipientId: request.friend,
       });
       return {
