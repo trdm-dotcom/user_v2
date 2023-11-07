@@ -70,7 +70,7 @@ export default class FriendService {
         true,
         null,
         'REQUEST',
-        friendEntity.id,
+        userId,
         userId
       );
       return {
@@ -122,7 +122,11 @@ export default class FriendService {
         `${name} accepted your friend request`,
         'push_up',
         FirebaseType.TOKEN,
-        false
+        true,
+        null,
+        'ACCEPT',
+        userId,
+        userId
       );
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
@@ -150,9 +154,11 @@ export default class FriendService {
     if (friend.sourceId != userId && friend.targetId != userId) {
       throw new Errors.GeneralError(Constants.USER_DONT_HAVE_PERMISSION);
     }
+    const friendId = friend.sourceId == userId ? friend.targetId : friend.sourceId;
     this.friendRepository.delete({ id: request.friend });
     getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
-      recipientId: request.friend,
+      headers: request.headers,
+      recipientId: friendId,
     });
     return {};
   }
@@ -208,9 +214,10 @@ export default class FriendService {
     const result: any[] = await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
-      .where('user.id = :userId and friend.status = :status', {
+      .where('user.id = :userId and friend.status = :status and user.status = :accStatus', {
         userId: userId,
         status: FriendStatus.BLOCKED,
+        accStatus: UserStatus.ACTIVE,
       })
       .offset(offset)
       .limit(limit)
@@ -297,9 +304,7 @@ export default class FriendService {
       .createQueryBuilder('friend')
       .select('IF(friend.sourceId = :friend, friend.targetId, friend.sourceId)', 'user_id')
       .distinct()
-      .where(
-        '(friend.sourceId = :friend OR friend.targetId = :friend) AND friend.status = :status AND (friend.sourceId != :userId AND friend.targetId != :userId)'
-      )
+      .where('(friend.sourceId = :friend OR friend.targetId = :friend) AND friend.status = :status')
       .getQuery();
 
     const subQueryTarget = this.friendRepository
@@ -327,9 +332,13 @@ export default class FriendService {
       )
       .addSelect('user_friend_target.user_id IS NOT NULL', 'is_friend')
       .addSelect('user_friend_target.friend_status', 'friend_status')
-      .where('user_friend_target.friend_status != :blockStatus OR user_friend_target.friend_status IS NULL', {
-        blockStatus: FriendStatus.BLOCKED,
-      });
+      .where(
+        'user_friend_target.friend_status != :blockStatus OR user_friend_target.friend_status IS NULL AND user.status = :accStatus',
+        {
+          blockStatus: FriendStatus.BLOCKED,
+          accStatus: UserStatus.ACTIVE,
+        }
+      );
 
     const result: any[] = await queryBuilder.getRawMany();
 
@@ -458,6 +467,7 @@ export default class FriendService {
       )
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status })
+      .andWhere('user.status = :accStatus', { accStatus: UserStatus.ACTIVE })
       .offset(offset)
       .limit(limit)
       .getRawMany();

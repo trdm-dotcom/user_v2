@@ -58,6 +58,9 @@ export default class RequestHandler {
         case 'post:/api/v1/user/checkExist':
           return await this.authenticationService.checkExist(message.data, message.transactionId);
 
+        case 'put:/api/v1/user/mode':
+          return await this.userService.updateMode(message.data, message.transactionId);
+
         case 'put:/api/v1/user/info':
           return await this.userService.putUserInfo(message.data, message.transactionId);
 
@@ -108,7 +111,7 @@ export default class RequestHandler {
 
         case 'get:/api/v1/user/checkFriend':
           return await this.friendService.checkFriend(message.data, message.transactionId);
-        
+
         case 'get:/api/v1/user/friendOfUser':
           return await this.friendService.getFriendOfUser(message.data, message.transactionId);
 

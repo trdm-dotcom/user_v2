@@ -90,6 +90,40 @@ export default class UserService {
     return response;
   }
 
+  public async updateMode(request: IUpdateUserInfoRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const invalidParams = new Errors.InvalidParameterError();
+    Utils.validate(request.mode, 'mode').setRequire().throwValid(invalidParams);
+    invalidParams.throwErr();
+    try {
+      while (await this.cacheService.findInprogessValidate(userId, Constants.UPDATE_INPROGESS, transactionId)) {
+        Logger.warn(`${transactionId} waiting do progess`);
+      }
+      this.cacheService.addInprogessValidate(userId, Constants.UPDATE_INPROGESS, transactionId);
+      const user: User = await this.userRepository.findOne({ id: userId });
+      if (user == null) {
+        throw new Errors.GeneralError(Constants.OBJECT_NOT_FOUND);
+      }
+      await this.userRepository.update(
+        { id: userId },
+        {
+          privateMode: request.mode,
+        }
+      );
+    } catch (error) {
+      if (error instanceof Errors.GeneralError) {
+        throw error;
+      }
+      throw new Errors.GeneralError();
+    } finally {
+      this.cacheService.removeInprogessValidate(userId, Constants.UPDATE_INPROGESS, transactionId);
+    }
+    const response: IResultResponse = {
+      status: Constants.UPDATE_USER_INFO_SUCCESSFULL,
+    };
+    return response;
+  }
+
   public async confirmUser(request: IUserConfirmRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const invalidParams = new Errors.InvalidParameterError();
@@ -179,7 +213,7 @@ export default class UserService {
     invalidParams.throwErr();
     const results: User[] = await this.userRepository
       .createQueryBuilder('user')
-      .where({ id: In(request.userIds) })
+      .where({ id: In(request.userIds), status: UserStatus.ACTIVE })
       .getMany();
     return results.map(
       (v: User, i: number): IUserInfoResponse => ({

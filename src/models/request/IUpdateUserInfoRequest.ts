@@ -4,4 +4,5 @@ export interface IUpdateUserInfoRequest extends IDataRequest {
   name: string;
   about: string;
   avatar: string;
+  mode: boolean;
 }
