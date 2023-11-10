@@ -1,5 +1,5 @@
 import { Inject, Service } from 'typedi';
-import { EntityManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import Biometric from '../models/entities/Biometric';
 import { IBiometricRegisterRequest } from '../models/request/IBiometricRegisterRequest';
 import { Errors, Logger, Utils } from 'common';
@@ -14,7 +14,8 @@ import AuthenticationService from './AuthenticationService';
 import { ILoginRequest } from '../models/request/ILoginRequest';
 import { ILoginResponse } from '../models/response/ILoginResponse';
 import * as utils from '../utils/Utils';
-import { InjectManager, InjectRepository } from 'typeorm-typedi-extensions';
+import { InjectRepository } from 'typeorm-typedi-extensions';
+import { UserStatus } from '../models/enum/UserStatus';
 
 @Service()
 export default class BiometricService {
@@ -22,8 +23,8 @@ export default class BiometricService {
   private authenticationService: AuthenticationService;
   @InjectRepository(Biometric)
   private biometricRepository: Repository<Biometric>;
-  @InjectManager()
-  private manager: EntityManager;
+  @InjectRepository(User)
+  private userRepository: Repository<User>;
 
   public async registerBiometric(request: IBiometricRegisterRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
@@ -111,6 +112,9 @@ export default class BiometricService {
       username: request.username,
     };
     const user: User = await this.authenticationService.findAndValidUser(loginRequest, transactionId);
+    if (user.status == UserStatus.INACTIVE) {
+      await this.userRepository.update({ id: user.id }, { status: UserStatus.ACTIVE, deletedAt: null });
+    }
     const response: ILoginResponse = {
       id: user.id,
       status: user.status,
@@ -135,12 +139,10 @@ export default class BiometricService {
   }
 
   private async updateBiometric(biometric: Biometric, status: boolean, reason: string) {
-    await this.manager.transaction(async (transactionalEntityManager) => {
-      biometric.status = BiometricStatus.INACTIVE;
-      biometric.isDeleted = status;
-      biometric.deleteReason = biometric.status == BiometricStatus.INACTIVE ? Constants.BIOMETRIC_OTP_VERIFY : reason;
-      await transactionalEntityManager.save(biometric);
-    });
+    biometric.status = BiometricStatus.INACTIVE;
+    biometric.isDeleted = status;
+    biometric.deleteReason = biometric.status == BiometricStatus.INACTIVE ? Constants.BIOMETRIC_OTP_VERIFY : reason;
+    await this.biometricRepository.save(biometric);
   }
 
   private async findBiometricByUsernameAndDeviceId(

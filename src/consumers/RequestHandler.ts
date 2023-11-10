@@ -6,7 +6,6 @@ import AuthenticationService from '../services/AuthenticationService';
 import UserService from '../services/UserService';
 import FriendService from '../services/FriendService';
 import BiometricService from '../services/BiometricService';
-import SocialAuthenticateService from '../services/SocialAuthenticateService';
 import { getInstance } from '../services/KafkaProducerService';
 
 const { UriNotFound } = Errors;
@@ -21,8 +20,6 @@ export default class RequestHandler {
   private friendService: FriendService;
   @Inject()
   private biometricService: BiometricService;
-  @Inject()
-  private socialAuthenticateService: SocialAuthenticateService;
 
   public init() {
     const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(getInstance());
@@ -48,9 +45,6 @@ export default class RequestHandler {
 
         case 'post:/api/v1/user/resetPassword':
           return await this.authenticationService.resetPassword(message.data, message.transactionId);
-
-        case 'post:/api/v1/login/social':
-          return await this.socialAuthenticateService.login(message.data, message.transactionId);
 
         case 'post:/api/v1/login/biometric':
           return await this.biometricService.login(message.data, message.transactionId);

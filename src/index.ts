@@ -8,9 +8,10 @@ import RedisService from './services/RedisService';
 import { Container as ContainerTypeOrm } from 'typeorm-typedi-extensions';
 import User from './models/entities/User';
 import Friend from './models/entities/Friend';
-import Social from './models/entities/Social';
 import { createConnection, useContainer } from 'typeorm';
 import Biometric from './models/entities/Biometric';
+import Job from './services/Job';
+import { CronJob } from 'cron';
 
 Logger.create(config.logger.config, true);
 Logger.info('Starting...');
@@ -21,13 +22,22 @@ async function run() {
   await createConnection({
     ...{
       type: 'mysql',
-      entities: [User, Friend, Social, Biometric],
+      entities: [User, Friend, Biometric],
     },
     ...config.datasource,
   });
   initKafka();
   Container.get(RequestHandler).init();
   Container.get(RedisService).init();
+
+  CronJob.from({
+    cronTime: '0 0 0 * * *',
+    onTick: function () {
+      Container.get(Job).finalDelete();
+    },
+    start: true,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  });
 }
 
 run().catch((error) => {

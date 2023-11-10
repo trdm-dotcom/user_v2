@@ -448,14 +448,6 @@ export default class FriendService {
     };
   }
 
-  public async deleteAllFriend(userId: number) {
-    await this.friendRepository
-      .createQueryBuilder('friend')
-      .delete()
-      .where('sourceId = :userId or targetId = :userId', { userId: userId })
-      .execute();
-  }
-
   private async findFriendBy(userId: number, status: FriendStatus, offset: number = 0, limit: number = 20) {
     return await this.friendRepository
       .createQueryBuilder('friend')

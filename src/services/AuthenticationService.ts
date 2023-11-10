@@ -34,7 +34,7 @@ export default class AuthenticationService {
   private FULLNAME_REGEX = new RegExp(
     '[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸ]+'
   );
-  // private EMAIL_REGEX = new RegExp('^(?<!\\.)[\\w-.]+@([\\w-]+.)+[\\w-]{2,4}$(?<!\\.)');
+  private EMAIL_REGEX = new RegExp('^(?!\\.)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]*$(?<!\\.)');
 
   public async login(request: ILoginRequest, transactionId: string | number) {
     const invalidParams = new Errors.InvalidParameterError();
@@ -49,6 +49,9 @@ export default class AuthenticationService {
       : request.password;
     if (!(await this.comparePassword(password, user.password))) {
       throw new Errors.GeneralError(Constants.INVALID_CLIENT_CREDENTIAL);
+    }
+    if (user.status == UserStatus.INACTIVE) {
+      await this.userRepository.update({ id: user.id }, { status: UserStatus.ACTIVE, deletedAt: null });
     }
     const response: ILoginResponse = {
       id: user.id,
@@ -72,9 +75,9 @@ export default class AuthenticationService {
     let password: string = config.app.encryptPassword
       ? await utils.rsaDecrypt(request.password, config.key.rsa.privateKey)
       : request.password;
-    // if (!this.EMAIL_REGEX.test(request.email)) {
-    //   throw new Errors.GeneralError(Constants.EMAIL_NOT_MATCHED_POLICY);
-    // }
+    if (!this.EMAIL_REGEX.test(request.email)) {
+      throw new Errors.GeneralError(Constants.EMAIL_NOT_MATCHED_POLICY);
+    }
     if (!this.PHONE_NUMBER_REGEX.test(request.phoneNumber)) {
       throw new Errors.GeneralError(Constants.PHONE_NUMBER_NOT_MATCHED_POLICY);
     }

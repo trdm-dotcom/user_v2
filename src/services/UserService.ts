@@ -16,10 +16,8 @@ import IDeleteUserResponse from '../models/response/IDeleteUserResponse';
 import * as bcrypt from 'bcrypt';
 import IUserConfirmRequest from '../models/request/IUserConfirmRequest';
 import { UserStatus } from '../models/enum/UserStatus';
-import { v4 as uuid } from 'uuid';
 import { InjectRepository } from 'typeorm-typedi-extensions';
 import { getInstance } from './KafkaProducerService';
-import FriendService from './FriendService';
 import { ISearchUserRequest } from '../models/request/ISearchUser';
 import { ObjectMapper } from 'jackson-js';
 import Config from '../Config';
@@ -30,8 +28,6 @@ export default class UserService {
   private cacheService: CacheService;
   @Inject()
   private tokenService: TokenService;
-  @Inject()
-  private friendService: FriendService;
   @InjectRepository(User)
   private userRepository: Repository<User>;
   private FULLNAME_REGEX = new RegExp(
@@ -185,14 +181,9 @@ export default class UserService {
         { id: userId },
         {
           status: UserStatus.INACTIVE,
-          phoneNumber: uuid(),
-          email: uuid(),
+          deletedAt: new Date(),
         }
       );
-      await this.friendService.deleteAllFriend(userId);
-      getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/conversation/deleteAll', {
-        headers: request.headers,
-      });
       this.cacheService.removeOtpKey(clams.id, transactionId);
       this.sendMessageDeleteAccount(user, transactionId);
     } catch (error) {
