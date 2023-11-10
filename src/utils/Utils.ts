@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, createReadStream } from 'fs';
 import { privateDecrypt, publicEncrypt } from 'crypto';
 import { Errors, Models, Logger } from 'common';
 import config from '../Config';

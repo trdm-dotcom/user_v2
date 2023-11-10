@@ -72,19 +72,6 @@ let config = {
       keyHash: 'wfyxb3sR1O',
     },
   },
-  google: {
-    id: '41547290544-umgsh2m6m4913ucjpfbta6b9ei6gufv2.apps.googleusercontent.com',
-    secret: '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',
-    infoUrl: '',
-    profileUrl: '',
-  },
-  facebook: {
-    id: '',
-    secret: '',
-    infoUrl: '',
-    profileUrl: '',
-    avatarUrl: '',
-  },
 };
 
 config.kafkaConsumerOptions = {

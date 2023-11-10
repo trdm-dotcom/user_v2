@@ -8,12 +8,13 @@ import * as utils from '../utils/Utils';
 import Constants from '../Constants';
 import { UserStatus } from '../models/enum/UserStatus';
 import { FriendStatus } from '../models/enum/FriendStatus';
-import { FirebaseType } from 'common/build/src/modules/models';
+import { FirebaseType, IDataRequest } from 'common/build/src/modules/models';
 import IFriendResponse from '../models/response/IFriendResponse';
 import { ISuggestFriendRequest } from '../models/request/ISuggestFriendRequest';
 import { InjectRepository } from 'typeorm-typedi-extensions';
 import CacheService from './CacheService';
 import { getInstance } from './KafkaProducerService';
+import IUserInfoResponse from '../models/response/IUserInfoResponse';
 
 @Service()
 export default class FriendService {
@@ -167,8 +168,8 @@ export default class FriendService {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
-    const result: any[] = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
-    return result.map(
+    const { results, count } = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
+    const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.friend_id,
         email: v.user_email,
@@ -183,14 +184,20 @@ export default class FriendService {
         privateMode: v.user_private_mode,
       })
     );
+    return {
+      total: count,
+      datas: datas,
+      page: request.pageNumber,
+      totalPages: Math.ceil(count / limit),
+    };
   }
 
   public async getFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
-    const result: any[] = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
-    return result.map(
+    const { results, count } = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
+    const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.friend_id,
         email: v.user_email,
@@ -205,13 +212,19 @@ export default class FriendService {
         privateMode: v.user_private_mode,
       })
     );
+    return {
+      total: count,
+      datas: datas,
+      page: request.pageNumber,
+      totalPages: Math.ceil(count / limit),
+    };
   }
 
   public async getBlockFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
-    const result: any[] = await this.friendRepository
+    const results: any[] = await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
       .where('user.id = :userId and friend.status = :status and user.status = :accStatus', {
@@ -222,7 +235,16 @@ export default class FriendService {
       .offset(offset)
       .limit(limit)
       .getRawMany();
-    return result.map(
+    const count: number = await this.friendRepository
+      .createQueryBuilder('friend')
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
+      .where('user.id = :userId and friend.status = :status and user.status = :accStatus', {
+        userId: userId,
+        status: FriendStatus.BLOCKED,
+        accStatus: UserStatus.ACTIVE,
+      })
+      .getCount();
+    const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.friend_id,
         email: v.user_email,
@@ -237,16 +259,18 @@ export default class FriendService {
         privateMode: v.user_private_mode,
       })
     );
+    return {
+      total: count,
+      datas: datas,
+      page: request.pageNumber,
+      totalPages: Math.ceil(count / limit),
+    };
   }
 
-  public async getSuggestByContact(
-    request: ISuggestFriendRequest,
-    transactionId: string | number
-  ): Promise<IFriendResponse[]> {
+  public async getSuggestByContact(request: ISuggestFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
     const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
-
     const subQuery = this.friendRepository
       .createQueryBuilder('friend')
       .select('CASE WHEN friend.sourceId = :userId THEN friend.targetId ELSE friend.sourceId END', 'user_id')
@@ -275,9 +299,9 @@ export default class FriendService {
     if (request.phone != null) {
       queryBuilder.andWhere({ phoneNumber: In(request.phone) });
     }
-    queryBuilder.offset(offset).limit(limit);
-    const result: any[] = await queryBuilder.getRawMany();
-    return result.map(
+    const results: any[] = await queryBuilder.offset(offset).limit(limit).getRawMany();
+    const count: number = await queryBuilder.getCount();
+    const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.user_id,
         email: v.user_email,
@@ -292,6 +316,12 @@ export default class FriendService {
         privateMode: v.user_private_mode,
       })
     );
+    return {
+      total: count,
+      datas: datas,
+      page: request.pageNumber,
+      totalPages: Math.ceil(count / limit),
+    };
   }
 
   public async getFriendOfUser(request: IFriendRequest, transactionId: string | number) {
@@ -300,6 +330,8 @@ export default class FriendService {
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
     const friend: number = Number(request.friend);
+    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
     const subQuerySource = this.friendRepository
       .createQueryBuilder('friend')
       .select('IF(friend.sourceId = :friend, friend.targetId, friend.sourceId)', 'user_id')
@@ -340,9 +372,9 @@ export default class FriendService {
         }
       );
 
-    const result: any[] = await queryBuilder.getRawMany();
-
-    return result.map(
+    const results: any[] = await queryBuilder.offset(offset).limit(limit).getRawMany();
+    const count: number = await queryBuilder.getCount();
+    const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.user_id,
         email: v.user_email,
@@ -357,6 +389,12 @@ export default class FriendService {
         privateMode: v.user_private_mode,
       })
     );
+    return {
+      total: count,
+      datas: datas,
+      page: request.pageNumber,
+      totalPages: Math.ceil(count / limit),
+    };
   }
 
   public async blockFriend(request: IFriendRequest, transactionId: string | number) {
@@ -449,19 +487,50 @@ export default class FriendService {
   }
 
   private async findFriendBy(userId: number, status: FriendStatus, offset: number = 0, limit: number = 20) {
-    return await this.friendRepository
+    const queryBuilder: SelectQueryBuilder<any> = this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
-      .andWhere(
+      .where(
         new Brackets((qb) => {
           qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
         })
       )
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status })
+      .andWhere('user.status = :accStatus', { accStatus: UserStatus.ACTIVE });
+    const results = await queryBuilder.offset(offset).limit(limit).getRawMany();
+    const count = await queryBuilder.getCount();
+    return {
+      results,
+      count,
+    };
+  }
+
+  public async getFriendInternal(request: IDataRequest, transactionId: string | number) {
+    const userId: number = request.headers.token.userData.id;
+    const results: any = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .distinct()
+      .where(
+        new Brackets((qb) => {
+          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
+        })
+      )
+      .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
       .andWhere('user.status = :accStatus', { accStatus: UserStatus.ACTIVE })
-      .offset(offset)
-      .limit(limit)
-      .getRawMany();
+      .getMany();
+    return results.map(
+      (v: any, i: number): IUserInfoResponse => ({
+        id: v.id,
+        email: v.email,
+        name: v.name,
+        status: v.status,
+        avatar: v.avatar,
+        phoneNumber: v.phone_number,
+        about: v.about,
+        privateMode: v.privateMode,
+      })
+    );
   }
 }
