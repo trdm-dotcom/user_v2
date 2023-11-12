@@ -166,8 +166,8 @@ export default class FriendService {
 
   public async getRequestFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const { results, count } = await this.findFriendBy(userId, FriendStatus.PENDING, offset, limit);
     const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
@@ -187,15 +187,15 @@ export default class FriendService {
     return {
       total: count,
       datas: datas,
-      page: request.pageNumber,
+      page: Number(request.pageNumber),
       totalPages: Math.ceil(count / limit),
     };
   }
 
   public async getFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const { results, count } = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
     const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
@@ -215,15 +215,15 @@ export default class FriendService {
     return {
       total: count,
       datas: datas,
-      page: request.pageNumber,
+      page: Number(request.pageNumber),
       totalPages: Math.ceil(count / limit),
     };
   }
 
   public async getBlockFriend(request: IFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const results: any[] = await this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
@@ -262,15 +262,15 @@ export default class FriendService {
     return {
       total: count,
       datas: datas,
-      page: request.pageNumber,
+      page: Number(request.pageNumber),
       totalPages: Math.ceil(count / limit),
     };
   }
 
   public async getSuggestByContact(request: ISuggestFriendRequest, transactionId: string | number) {
     const userId: number = request.headers.token.userData.id;
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const subQuery = this.friendRepository
       .createQueryBuilder('friend')
       .select('CASE WHEN friend.sourceId = :userId THEN friend.targetId ELSE friend.sourceId END', 'user_id')
@@ -319,7 +319,7 @@ export default class FriendService {
     return {
       total: count,
       datas: datas,
-      page: request.pageNumber,
+      page: Number(request.pageNumber),
       totalPages: Math.ceil(count / limit),
     };
   }
@@ -330,8 +330,8 @@ export default class FriendService {
     invalidParams.throwErr();
     const userId: number = request.headers.token.userData.id;
     const friend: number = Number(request.friend);
-    const limit = request.pageSize == null ? 20 : Math.min(request.pageSize, 100);
-    const offset = request.pageNumber == null ? 0 : Math.max(request.pageNumber, 0) * limit;
+    const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
+    const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const subQuerySource = this.friendRepository
       .createQueryBuilder('friend')
       .select('IF(friend.sourceId = :friend, friend.targetId, friend.sourceId)', 'user_id')
@@ -392,7 +392,7 @@ export default class FriendService {
     return {
       total: count,
       datas: datas,
-      page: request.pageNumber,
+      page: Number(request.pageNumber),
       totalPages: Math.ceil(count / limit),
     };
   }
