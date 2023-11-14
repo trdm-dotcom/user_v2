@@ -21,6 +21,7 @@ import { getInstance } from './KafkaProducerService';
 import { ISearchUserRequest } from '../models/request/ISearchUser';
 import { ObjectMapper } from 'jackson-js';
 import Config from '../Config';
+import { FriendStatus } from '../models/enum/FriendStatus';
 
 @Service()
 export default class UserService {
@@ -224,13 +225,21 @@ export default class UserService {
     const userId: number = request.headers.token.userData.id;
     const users: User[] = await this.userRepository
       .createQueryBuilder('user')
+      .innerJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
       .where(
         new Brackets((qb) => {
           qb.where('user.name like :search', { search: `%${request.search}%` });
         })
       )
-      .andWhere('id != :userId', { userId })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
+        })
+      )
+      .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
+      .andWhere('user.id != :userId', { userId })
       .getMany();
+
     return users.map(
       (user: User): IUserInfoResponse => ({
         id: user.id,

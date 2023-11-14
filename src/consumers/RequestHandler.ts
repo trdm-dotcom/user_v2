@@ -112,7 +112,7 @@ export default class RequestHandler {
         case 'internal:/api/v1/userInfos':
           return await this.userService.getUserInfos(message.data, message.transactionId);
 
-        case 'internal:/api/v1/user/search':
+        case 'get:/api/v1/user/friend/search':
           return await this.userService.searchUser(message.data, message.transactionId);
 
         case 'internal:/api/v1/user/friend':

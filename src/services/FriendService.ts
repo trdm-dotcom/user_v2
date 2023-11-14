@@ -196,7 +196,7 @@ export default class FriendService {
     const userId: number = request.headers.token.userData.id;
     const limit = request.pageSize == null ? 20 : Math.min(Number(request.pageSize), 100);
     const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
-    const { results, count } = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit);
+    const { results, count } = await this.findFriendBy(userId, FriendStatus.FRIENDED, offset, limit, request.search);
     const datas = results.map(
       (v: any, i: number): IFriendResponse => ({
         id: v.friend_id,
@@ -486,7 +486,13 @@ export default class FriendService {
     };
   }
 
-  private async findFriendBy(userId: number, status: FriendStatus, offset: number = 0, limit: number = 20) {
+  private async findFriendBy(
+    userId: number,
+    status: FriendStatus,
+    offset: number = 0,
+    limit: number = 20,
+    search: string = null
+  ) {
     const queryBuilder: SelectQueryBuilder<any> = this.friendRepository
       .createQueryBuilder('friend')
       .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId or user.id = friend.targetId')
@@ -498,6 +504,15 @@ export default class FriendService {
       .andWhere('user.id != :userId', { userId })
       .andWhere('friend.status = :status', { status })
       .andWhere('user.status = :accStatus', { accStatus: UserStatus.ACTIVE });
+    if (search != null) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('user.name like :search', { search: `%${search}%` })
+            .orWhere('user.email like :search', { search: `%${search}%` })
+            .orWhere('user.phoneNumber like :search', { search: `%${search}%` });
+        })
+      );
+    }
     const results = await queryBuilder.offset(offset).limit(limit).getRawMany();
     const count = await queryBuilder.getCount();
     return {
