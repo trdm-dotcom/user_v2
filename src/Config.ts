@@ -58,13 +58,13 @@ let config = {
   },
   key: {
     jwt: {
-      publicKey: './../external/key/jwt_public.key',
-      privateKey: './../external/key/jwt_private.key',
+      publicKey: './../key/jwt_public.key',
+      privateKey: './../key/jwt_private.key',
     },
     rsa: {
       enableEncryptPassword: true,
-      publicKey: './../external/key/rsa_public.key',
-      privateKey: './../external/key/rsa_private.key',
+      publicKey: './../key/rsa_public.key',
+      privateKey: './../key/rsa_private.key',
     },
     aes: {
       key: 'IaPON8rXjCQ5TIUVYBtcw8WKGCfcQEtc',

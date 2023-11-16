@@ -5,9 +5,11 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "scripts": {
+    "clean": "rm -rf build && mkdir build",
+    "copyKeys": "mkdir -p build/src/key && cp -R key build",
     "run-local": "node build/src/index.js",
     "build-local": "npm run build && node build/src/index.js",
-    "build": "tsc -p tsconfig.json"
+    "build": "npm run clean && npm run copyKeys && tsc -p tsconfig.json"
   },
   "keywords": [],
   "author": "",
@@ -17,12 +19,12 @@
     "@types/uuid": "^8.3.4",
     "axios": "^0.27.2",
     "bcrypt": "^5.0.1",
-    "common": "file:../common",
+    "common": "git+https://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:x-oauth-basic@github.com/trdm-dotcom/common.git",
     "cron": "^3.1.6",
     "crypto-js": "^4.1.1",
     "jackson-js": "^1.1.0",
     "jsonwebtoken": "^9.0.0",
-    "kafka-common": "file:../kafka-common",
+    "kafka-common": "git+https://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:x-oauth-basic@github.com/trdm-dotcom/kafka-common.git",
     "moment": "^2.29.4",
     "mysql": "^2.18.1",
     "redis": "^4.1.0",
