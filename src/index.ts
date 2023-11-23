@@ -9,7 +9,6 @@ import { Container as ContainerTypeOrm } from 'typeorm-typedi-extensions';
 import User from './models/entities/User';
 import Friend from './models/entities/Friend';
 import { createConnection, useContainer } from 'typeorm';
-import Biometric from './models/entities/Biometric';
 import Job from './services/Job';
 import { CronJob } from 'cron';
 
@@ -22,7 +21,7 @@ async function run() {
   await createConnection({
     ...{
       type: 'mysql',
-      entities: [User, Friend, Biometric],
+      entities: [User, Friend],
     },
     ...config.datasource,
   });

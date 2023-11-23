@@ -5,7 +5,6 @@ import config from '../Config';
 import AuthenticationService from '../services/AuthenticationService';
 import UserService from '../services/UserService';
 import FriendService from '../services/FriendService';
-import BiometricService from '../services/BiometricService';
 import { getInstance } from '../services/KafkaProducerService';
 
 const { UriNotFound } = Errors;
@@ -18,8 +17,6 @@ export default class RequestHandler {
   private userService: UserService;
   @Inject()
   private friendService: FriendService;
-  @Inject()
-  private biometricService: BiometricService;
 
   public init() {
     const handle: Kafka.KafkaRequestHandler = new Kafka.KafkaRequestHandler(getInstance());
@@ -45,9 +42,6 @@ export default class RequestHandler {
 
         case 'post:/api/v1/user/resetPassword':
           return await this.authenticationService.resetPassword(message.data, message.transactionId);
-
-        case 'post:/api/v1/login/biometric':
-          return await this.biometricService.login(message.data, message.transactionId);
 
         case 'post:/api/v1/user/checkExist':
           return await this.authenticationService.checkExist(message.data, message.transactionId);
@@ -93,15 +87,6 @@ export default class RequestHandler {
 
         case 'get:/api/v1/user/friend/block':
           return await this.friendService.getBlockFriend(message.data, message.transactionId);
-
-        case 'post:/api/v1/user/bio/registerBiometric':
-          return await this.biometricService.registerBiometric(message.data, message.transactionId);
-
-        case 'get:/api/v1/user/bio/queryBiometricStatus':
-          return await this.biometricService.queryBiometricStatus(message.data, message.transactionId);
-
-        case 'delete:/api/v1/user/bio/cancelBiometricRegister':
-          return await this.biometricService.cancelBiometricRegister(message.data, message.transactionId);
 
         case 'get:/api/v1/user/checkFriend':
           return await this.friendService.checkFriend(message.data, message.transactionId);
