@@ -6,7 +6,7 @@
   "types": "build/src/index.d.ts",
   "scripts": {
     "clean": "rm -rf build && mkdir build",
-    "copyKeys": "mkdir -p build/src/key && cp -R key build/src/key",
+    "copyKeys": "mkdir -p build/src/key && cp -R key build/src",
     "run-local": "node build/src/index.js",
     "build-local": "npm run build && node build/src/index.js",
     "build": "npm run clean && npm run copyKeys && tsc -p tsconfig.json"
