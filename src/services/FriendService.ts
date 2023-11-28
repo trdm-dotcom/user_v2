@@ -482,7 +482,7 @@ export default class FriendService {
       isFriend: friend != null,
       status: friend == null ? null : friend.status,
       friendId: friend == null ? null : friend.id,
-      targetId: friend == null ? null : friend.targetId,
+      targetId: friend == null ? null : friend.targetId == userId ? friend.sourceId : friend.targetId,
     };
   }
 
