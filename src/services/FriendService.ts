@@ -525,14 +525,12 @@ export default class FriendService {
     const userId: number = request.headers.token.userData.id;
     const results: any = await this.userRepository
       .createQueryBuilder('user')
-      .innerJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
+      .leftJoinAndSelect('friend', 'friend', 'user.id = friend.sourceId or user.id = friend.targetId')
       .distinct()
       .where(
-        new Brackets((qb) => {
-          qb.where('friend.targetId = :userId', { userId }).orWhere('friend.sourceId = :userId', { userId });
-        })
+        '((((friend.targetId = :userId OR friend.sourceId = :userId) AND friend.status = :status) OR user.id = :userId))',
+        { status: FriendStatus.FRIENDED, userId: userId }
       )
-      .andWhere('friend.status = :status', { status: FriendStatus.FRIENDED })
       .andWhere('user.status = :accStatus', { accStatus: UserStatus.ACTIVE })
       .getMany();
     return results.map(
