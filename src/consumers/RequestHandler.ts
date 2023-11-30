@@ -94,14 +94,17 @@ export default class RequestHandler {
         case 'get:/api/v1/user/friendOfUser':
           return await this.friendService.getFriendOfUser(message.data, message.transactionId);
 
-        case 'internal:/api/v1/userInfos':
-          return await this.userService.getUserInfos(message.data, message.transactionId);
-
         case 'get:/api/v1/user/friend/search':
           return await this.userService.searchUser(message.data, message.transactionId);
 
+        case 'internal:/api/v1/userInfos':
+          return await this.userService.getUserInfos(message.data, message.transactionId);
+
         case 'internal:/api/v1/user/friend':
           return await this.friendService.getFriendInternal(message.data, message.transactionId);
+
+        case 'internal:/api/v1/user/delete':
+          return await this.userService.internalDeleteUser(message.data, message.transactionId);
 
         default:
           throw new UriNotFound();

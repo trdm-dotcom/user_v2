@@ -22,6 +22,7 @@ import { ISearchUserRequest } from '../models/request/ISearchUser';
 import { ObjectMapper } from 'jackson-js';
 import Config from '../Config';
 import { FriendStatus } from '../models/enum/FriendStatus';
+import Friend from '../models/entities/Friend';
 
 @Service()
 export default class UserService {
@@ -31,6 +32,8 @@ export default class UserService {
   private tokenService: TokenService;
   @InjectRepository(User)
   private userRepository: Repository<User>;
+  @InjectRepository(Friend)
+  private friendRepository: Repository<Friend>;
   private FULLNAME_REGEX = new RegExp(
     '[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸ]+'
   );
@@ -252,6 +255,20 @@ export default class UserService {
         privateMode: user.privateMode,
       })
     );
+  }
+
+  public async internalDeleteUser(request: any, transactionId: string | number) {
+    await this.friendRepository
+      .createQueryBuilder('friend')
+      .delete()
+      .where({ sourceId: request.userId })
+      .orWhere({ targetId: request.userId })
+      .execute();
+    await this.userRepository.createQueryBuilder('user').delete().where({ id: request.userId }).execute();
+    getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/deleteAll', {
+      userIds: request.userId,
+    });
+    return {};
   }
 
   private async comparePassword(plaintextPassword: string | Buffer, hash: string): Promise<boolean> {

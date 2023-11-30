@@ -124,19 +124,21 @@ export function sendMessagePushNotification(
   condition?: string,
   token?: string
 ) {
-  getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
-    userId: userId,
-    content: content,
-    template: template,
-    type: type,
-    isSave: isSave,
-    title: title,
-    sourceId: sourceId,
-    notificationType: notificationType,
-    authorId: authorId,
-    condition: condition,
-    token: token,
-  });
+  if (userId != authorId) {
+    getInstance().sendMessage(msgId.toString(), config.topic.pushNotification, 'pushNotification', {
+      userId: userId,
+      content: content,
+      template: template,
+      type: type,
+      isSave: isSave,
+      title: title,
+      sourceId: sourceId,
+      notificationType: notificationType,
+      authorId: authorId,
+      condition: condition,
+      token: token,
+    });
+  }
 }
 
 export function validHash(hash: string, type: string) {

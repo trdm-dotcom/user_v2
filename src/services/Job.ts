@@ -30,7 +30,7 @@ export default class Job {
         .orWhere({ targetId: In(userIds) })
         .execute();
       await this.userRepository
-        .createQueryBuilder()
+        .createQueryBuilder('user')
         .delete()
         .where({ id: In(userIds) })
         .execute();
