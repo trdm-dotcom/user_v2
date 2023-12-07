@@ -226,8 +226,8 @@ export default class FriendService {
     const offset = request.pageNumber == null ? 0 : Math.max(Number(request.pageNumber), 0) * limit;
     const results: any[] = await this.friendRepository
       .createQueryBuilder('friend')
-      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
-      .where('user.id = :userId and friend.status = :status and user.status = :accStatus', {
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.targetId')
+      .where('friend.sourceId = :userId and friend.status = :status and user.status = :accStatus', {
         userId: userId,
         status: FriendStatus.BLOCKED,
         accStatus: UserStatus.ACTIVE,
@@ -237,8 +237,8 @@ export default class FriendService {
       .getRawMany();
     const count: number = await this.friendRepository
       .createQueryBuilder('friend')
-      .innerJoinAndSelect('user', 'user', 'user.id = friend.sourceId')
-      .where('user.id = :userId and friend.status = :status and user.status = :accStatus', {
+      .innerJoinAndSelect('user', 'user', 'user.id = friend.targetId')
+      .where('friend.sourceId = :userId and friend.status = :status and user.status = :accStatus', {
         userId: userId,
         status: FriendStatus.BLOCKED,
         accStatus: UserStatus.ACTIVE,
@@ -482,7 +482,7 @@ export default class FriendService {
       isFriend: friend != null,
       status: friend == null ? null : friend.status,
       friendId: friend == null ? null : friend.id,
-      targetId: friend == null ? null : friend.targetId == userId ? friend.sourceId : friend.targetId,
+      targetId: friend == null ? null : (friend.targetId == userId && friend.status != 'BLOCKED') ? friend.sourceId : friend.targetId,
     };
   }
 
