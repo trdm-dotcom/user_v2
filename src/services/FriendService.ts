@@ -15,17 +15,20 @@ import { InjectRepository } from 'typeorm-typedi-extensions';
 import CacheService from './CacheService';
 import { getInstance } from './KafkaProducerService';
 import IUserInfoResponse from '../models/response/IUserInfoResponse';
+import RedisService from './RedisService';
 
 @Service()
 export default class FriendService {
   @Inject()
   private cacheService: CacheService;
+  @Inject()
+  private redisService: RedisService;
   @InjectRepository(User)
   private userRepository: Repository<User>;
   @InjectRepository(Friend)
   private friendRepository: Repository<Friend>;
 
-  public async requestFriend(request: IFriendRequest, transactionId: string | number) {
+  public async requestFriend(request: IFriendRequest, transactionId: string | number, sourceId: string) {
     const userId: number = request.headers.token.userData.id;
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
@@ -74,6 +77,33 @@ export default class FriendService {
         userId,
         userId
       );
+      this.userRepository
+        .findOne({
+          id: userId,
+        })
+        .then((currentUser: User) => {
+          this.publish(
+            'friend.request',
+            {
+              to: friend.targetId,
+              data: {
+                id: friendEntity.id,
+                email: currentUser.email,
+                name: currentUser.name,
+                status: currentUser.status,
+                avatar: currentUser.avatar,
+                phoneNumber: currentUser.phoneNumber,
+                about: currentUser.about,
+                friendId: currentUser.id,
+                isAccept: true,
+                friendStatus: friendEntity.status,
+                privateMode: currentUser.privateMode,
+              },
+            },
+            sourceId
+          );
+        });
+
       return {
         id: friendEntity.id,
         status: friendEntity.status,
@@ -88,7 +118,7 @@ export default class FriendService {
     }
   }
 
-  public async acceptFriend(request: IFriendRequest, transactionId: string | number) {
+  public async acceptFriend(request: IFriendRequest, transactionId: string | number, sourceId: string) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
@@ -129,6 +159,36 @@ export default class FriendService {
         userId,
         userId
       );
+      this.userRepository
+        .findOne({
+          id: userId,
+        })
+        .then((currentUser: User) => {
+          this.publish(
+            'friend.accept',
+            {
+              to: friend.sourceId,
+              data: {
+                id: friend.id,
+                email: currentUser.email,
+                name: currentUser.name,
+                status: currentUser.status,
+                avatar: currentUser.avatar,
+                phoneNumber: currentUser.phoneNumber,
+                about: currentUser.about,
+                friendId: currentUser.id,
+                isAccept: false,
+                friendStatus: friend.status,
+                privateMode: currentUser.privateMode,
+              },
+            },
+            sourceId
+          );
+        });
+      return {
+        id: friend.id,
+        status: FriendStatus.FRIENDED,
+      };
     } catch (error) {
       Logger.error(`${transactionId} Error:`, error);
       if (error instanceof Errors.GeneralError) {
@@ -137,10 +197,9 @@ export default class FriendService {
         throw new Errors.GeneralError();
       }
     }
-    return {};
   }
 
-  public async rejectFriend(request: IFriendRequest, transactionId: string | number) {
+  public async rejectFriend(request: IFriendRequest, transactionId: string | number, sourceId: string) {
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
     invalidParams.throwErr();
@@ -161,6 +220,17 @@ export default class FriendService {
       headers: request.headers,
       recipientId: friendId,
     });
+    this.publish(
+      'friend.reject',
+      {
+        to: friendId,
+        data: {
+          userId: userId,
+          status: friend.status,
+        },
+      },
+      sourceId
+    );
     return {};
   }
 
@@ -397,7 +467,7 @@ export default class FriendService {
     };
   }
 
-  public async blockFriend(request: IFriendRequest, transactionId: string | number) {
+  public async blockFriend(request: IFriendRequest, transactionId: string | number, sourceId: string) {
     const userId: number = request.headers.token.userData.id;
     const invalidParams = new Errors.InvalidParameterError();
     Utils.validate(request.friend, 'friend').setRequire().throwValid(invalidParams);
@@ -435,6 +505,17 @@ export default class FriendService {
       getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
         recipientId: request.friend,
       });
+      this.publish(
+        'friend.block',
+        {
+          to: user.id,
+          data: {
+            userId: userId,
+            status: friend.status,
+          },
+        },
+        sourceId
+      );
       return {
         id: friend.id,
         status: friend.status,
@@ -482,7 +563,12 @@ export default class FriendService {
       isFriend: friend != null,
       status: friend == null ? null : friend.status,
       friendId: friend == null ? null : friend.id,
-      targetId: friend == null ? null : (friend.targetId == userId && friend.status != 'BLOCKED') ? friend.sourceId : friend.targetId,
+      targetId:
+        friend == null
+          ? null
+          : friend.targetId == userId && friend.status != 'BLOCKED' && friend.status != 'PENDING'
+          ? friend.sourceId
+          : friend.targetId,
     };
   }
 
@@ -545,5 +631,14 @@ export default class FriendService {
         privateMode: v.privateMode,
       })
     );
+  }
+
+  private publish(type: string, data: any, clientId: string) {
+    const outgoing = {
+      clientId: clientId,
+      type: type,
+      data: data,
+    };
+    this.redisService.publish('gateway', outgoing);
   }
 }

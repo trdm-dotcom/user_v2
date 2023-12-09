@@ -62,13 +62,13 @@ export default class RequestHandler {
           return await this.userService.disableUser(message.data, message.transactionId);
 
         case 'post:/api/v1/user/friend/request':
-          return await this.friendService.requestFriend(message.data, message.transactionId);
+          return await this.friendService.requestFriend(message.data, message.transactionId, message.sourceId);
 
         case 'put:/api/v1/user/friend':
-          return await this.friendService.acceptFriend(message.data, message.transactionId);
+          return await this.friendService.acceptFriend(message.data, message.transactionId, message.sourceId);
 
         case 'delete:/api/v1/user/friend':
-          return await this.friendService.rejectFriend(message.data, message.transactionId);
+          return await this.friendService.rejectFriend(message.data, message.transactionId, message.sourceId);
 
         case 'get:/api/v1/user/friend':
           return await this.friendService.getFriend(message.data, message.transactionId);
@@ -80,7 +80,7 @@ export default class RequestHandler {
           return await this.friendService.getSuggestByContact(message.data, message.transactionId);
 
         case 'post:/api/v1/user/friend/block':
-          return await this.friendService.blockFriend(message.data, message.transactionId);
+          return await this.friendService.blockFriend(message.data, message.transactionId, message.sourceId);
 
         case 'delete:/api/v1/user/friend/block':
           return await this.friendService.unblockFriend(message.data, message.transactionId);
