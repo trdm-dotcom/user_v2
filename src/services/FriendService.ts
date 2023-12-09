@@ -216,10 +216,12 @@ export default class FriendService {
     }
     const friendId = friend.sourceId == userId ? friend.targetId : friend.sourceId;
     this.friendRepository.delete({ id: request.friend });
-    getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
-      headers: request.headers,
-      recipientId: friendId,
-    });
+    if (friend.status == FriendStatus.FRIENDED) {
+      getInstance().sendMessage(`${transactionId}`, 'core', 'internal:/api/v1/chat/conversation/delete', {
+        headers: request.headers,
+        recipientId: friendId,
+      });
+    }
     this.publish(
       'friend.reject',
       {
